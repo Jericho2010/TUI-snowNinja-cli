@@ -287,11 +287,13 @@ class SnowNinjaShell:
             ("meta/llama-4-maverick-17b-128e-instruct", "★ DEFAULT", "Llama 4 MoE · Maverick · Ultimate Reasoning"),
             ("mistralai/mistral-large-3-675b-instruct-2512", "FALLBACK", "675B Flagship · Deep Logic · Tool Calling ✓"),
             ("moonshotai/kimi-k2.6", "★ PREMIUM", "Kimi 2.6 · 11T MoE · Deep Context Reasoning"),
+            ("deepseek-ai/deepseek-v4-flash", "FLASH", "DeepSeek V4 Flash · Sub-Second Planning"),
             ("google/gemma-4-31b-it", "FAST", "Gemma 4 · Ultra-Fast Planning"),
         ]
         implementer_models = [
             ("qwen/qwen3-coder-480b-a35b-instruct", "★ DEFAULT", "Qwen 3 480B · Best Agentic Coder on NIM"),
             ("deepseek-ai/deepseek-v4-pro", "STABLE", "DeepSeek V4 · High Fidelity Logic"),
+            ("deepseek-ai/deepseek-v4-flash", "FLASH", "DeepSeek V4 Flash · Lightning SQL Execution"),
             ("z-ai/glm-5.1", "NEW", "GLM 5.1 Flagship · Agentic Implementation"),
         ]
 
