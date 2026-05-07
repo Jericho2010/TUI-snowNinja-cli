@@ -8,8 +8,8 @@ def test_config_defaults():
     config = SnowNinjaConfig()
     assert config.nvidia_pat == ""
     assert config.snowflake_profile == ""
-    assert config.planner_model == "meta/llama-3.1-405b-instruct"
-    assert config.implementer_model == "qwen/qwen2.5-coder-32b-instruct"
+    assert config.planner_model == "meta/llama-4-maverick-17b-128e-instruct"
+    assert config.implementer_model == "qwen/qwen3-coder-480b-a35b-instruct"
 
 def test_config_roundtrip(tmp_path, monkeypatch):
     """save_config → load_config roundtrip preserves all fields."""
@@ -39,7 +39,7 @@ def test_config_missing_file_returns_defaults(tmp_path, monkeypatch):
     
     loaded = load_config()
     assert loaded.nvidia_pat == ""
-    assert loaded.planner_model == "meta/llama-3.1-405b-instruct"
+    assert loaded.planner_model == "meta/llama-4-maverick-17b-128e-instruct"
 
 def test_snowflake_profile_default():
     """Default snowflake_profile is empty string."""
