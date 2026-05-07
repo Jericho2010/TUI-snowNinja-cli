@@ -25,8 +25,9 @@ def main(ctx: typer.Context):
             raise typer.Exit(code=1)
             
         console.print(Panel.fit("[bold blue]❄️  SnowNinja Agent Harness ❄️[/bold blue]\nType [bold green]/help[/bold green] for commands.", border_style="blue"))
-        # In later phases, we will launch the REPL here
-        console.print("[dim]REPL shell will be implemented in Phase 5...[/dim]")
+        import asyncio
+        from snowninja.repl.shell import run_repl
+        asyncio.run(run_repl())
 
 @app.command()
 def setup():

@@ -1,0 +1,42 @@
+import pytest
+from snowninja.repl.shell import SLASH_COMMANDS, MODES, SlashCompleter
+from snowninja.tui.panels import SF_BLUE, SF_NAVY, SF_GRAY, SF_WHITE, SF_SUCCESS, SF_WARNING, SF_ERROR
+from snowninja.llm.models import ModelRole
+from prompt_toolkit.document import Document
+
+def test_slash_commands_defined():
+    """SLASH_COMMANDS dict has >=20 entries."""
+    assert len(SLASH_COMMANDS) >= 20
+
+def test_all_modes_in_modes_dict():
+    """plan, implement, explore, operate, govern, cortex all in MODES."""
+    expected_modes = ["plan", "implement", "explore", "operate", "govern", "cortex"]
+    for mode in expected_modes:
+        assert mode in MODES
+
+def test_slash_completer_returns_matches():
+    """SlashCompleter yields completions for '/pl'."""
+    completer = SlashCompleter()
+    doc = Document("/pl")
+    completions = list(completer.get_completions(doc, None))
+    # Should match /plan
+    assert any(c.text == "/plan" for c in completions)
+
+def test_slash_completer_no_match():
+    """SlashCompleter yields nothing for 'hello'."""
+    completer = SlashCompleter()
+    doc = Document("hello")
+    completions = list(completer.get_completions(doc, None))
+    assert len(completions) == 0
+
+def test_modes_map_to_valid_roles():
+    """Every mode maps to 'planner' or 'implementer'."""
+    for mode, role in MODES.items():
+        assert role in [ModelRole.PLANNER, ModelRole.IMPLEMENTER]
+
+def test_brand_colors_are_hex():
+    """All SF_* color constants are valid hex (#XXXXXX)."""
+    colors = [SF_BLUE, SF_NAVY, SF_GRAY, SF_WHITE, SF_SUCCESS, SF_WARNING, SF_ERROR]
+    for color in colors:
+        assert color.startswith("#")
+        assert len(color) == 7
