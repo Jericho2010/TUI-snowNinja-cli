@@ -274,9 +274,9 @@ class SnowNinjaShell:
             ("meta/llama-3.1-70b-instruct",   "FAST",      "Balanced performance for simple planning"),
         ]
         implementer_models = [
-            ("qwen/qwen2.5-coder-32b-instruct", "★ DEFAULT", "Best on NIM for SQL & Python implementation"),
-            ("deepseek-ai/deepseek-coder-v2-instruct", "FAST", "Extremely fast coding completions"),
-            ("meta/llama-3.1-70b-instruct", "STABLE", "Solid fallback for tool calling"),
+            ("mistralai/mistral-large-2411",  "★ DEFAULT",  "Mistral Large · Best for Tool Calling & Logic"),
+            ("qwen/qwen2.5-coder-32b-instruct", "STABLE", "Solid for Python/SQL logic (no tools)"),
+            ("meta/llama-3.1-70b-instruct", "FAST", "Solid fallback for tool calling"),
         ]
 
         def fmt_row(model_id: str, tag: str, desc: str, color: str) -> str:
