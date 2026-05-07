@@ -252,9 +252,9 @@ class NimClient:
         """
         client = self._get_client()
         fallbacks = [
-            NimModel.MISTRAL_LATEST.value,
-            NimModel.QWEN_CODER_LATEST.value,
-            NimModel.DEEPSEEK_V4.value
+            NimModel.MISTRAL_LARGE_3.value,
+            NimModel.QWEN_3_CODER.value,
+            NimModel.DEEPSEEK_V4_PRO.value
         ]
         
         chain = [requested_model] + [m for m in fallbacks if m != requested_model]
@@ -336,7 +336,7 @@ class NimClient:
             except Exception as e:
                 if self._should_fallback(e):
                     # Try hard fallback to Mistral Large 3
-                    model = NimModel.MISTRAL_LATEST.value
+                    model = NimModel.MISTRAL_LARGE_3.value
                     yield "model_switch", model
                     try:
                         kwargs["model"] = model
