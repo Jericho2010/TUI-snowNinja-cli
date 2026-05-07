@@ -137,9 +137,17 @@ PT_STYLE = Style.from_dict({
 
 def _print_splash() -> None:
     """Print the Snowflake-branded startup splash to stdout once."""
-    conn_info = f"Profile: {session.config.snowflake_profile}" if session.config.snowflake_profile else "Not configured"
-    impl    = session.config.implementer_model
-    planner = session.config.planner_model
+    config = session.config
+    if config.snowflake_profile:
+        conn_info = f"Profile: {config.snowflake_profile}"
+    elif config.snowflake_url and config.snowflake_user:
+        account = config.snowflake_url.split(".")[0]
+        conn_info = f"{account} ({config.snowflake_user})"
+    else:
+        conn_info = "Not configured"
+
+    impl    = config.implementer_model
+    planner = config.planner_model
 
     logo_text = Text(NINJA_ASCII, style=f"bold {SF_BLUE}")
     console.print(logo_text)
@@ -192,11 +200,18 @@ class SnowNinjaShell:
         return self._nim_client
 
     def _bottom_toolbar(self) -> HTML:
-        conn = session.config.snowflake_profile or "no-profile"
+        config = session.config
+        if config.snowflake_profile:
+            conn = config.snowflake_profile
+        elif config.snowflake_url and config.snowflake_user:
+            conn = config.snowflake_url.split(".")[0]
+        else:
+            conn = "no-profile"
+
         model = (
-            session.config.planner_model
+            config.planner_model
             if self.model_role == "planner"
-            else session.config.implementer_model
+            else config.implementer_model
         )
 
         if session.interview_mode:
