@@ -288,8 +288,8 @@ class SnowNinjaShell:
         ]
         implementer_tree = [
             ("qwen/qwen3-coder-480b-a35b-instruct", "DEFAULT", "Qwen 3 Coder · 480B · SOTA Coding"),
-            ("z-ai/glm-5.1", "FOLLOW", "GLM 5.1 · Next-Gen Agentic"),
-            ("mistralai/devstral-2-123b-instruct-2512", "FOLLOW", "Devstral 2 · High Fidelity Logic"),
+            ("z-ai/glm-5.1", "FALLBACK", "GLM 5.1 · Next-Gen Agentic"),
+            ("mistralai/devstral-2-123b-instruct-2512", "FALLBACK", "Devstral 2 · High Fidelity Logic"),
             ("deepseek-ai/deepseek-v4-pro", "STABLE", "DeepSeek V4 Pro · Reliable Heavyweight"),
         ]
         specialized_tiers = [
