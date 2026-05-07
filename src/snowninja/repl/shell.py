@@ -34,6 +34,7 @@ SLASH_COMMANDS = {
     "/connection": "Test current Snowflake connection",
     "/model": "Switch the active model (/model planner|implementer <model_name>)",
     "/models": "List current model assignments",
+    "/scaffold": "Generate project scaffold (/scaffold dbt|streamlit|snowpark <name>)",
 }
 
 # Map modes to ModelRole (for test requirement: "Every mode maps to 'planner' or 'implementer'")
@@ -157,6 +158,27 @@ async def handle_slash_command(user_input: str, nim_client: NimClient):
             print_system_message(f"Implementer model set to {session.config.implementer_model}")
         else:
             print_system_message("Usage: /model <planner|implementer> <model_name>")
+    elif cmd == "/scaffold":
+        from snowninja.scaffold.engine import create_dbt_project, create_streamlit_app, create_snowpark_project
+        parts = args.split(" ")
+        if len(parts) >= 2:
+            scaffold_type = parts[0].lower()
+            name = parts[1]
+            try:
+                if scaffold_type == "dbt":
+                    path = create_dbt_project(name)
+                elif scaffold_type == "streamlit":
+                    path = create_streamlit_app(name)
+                elif scaffold_type == "snowpark":
+                    path = create_snowpark_project(name)
+                else:
+                    print_system_message(f"Unknown scaffold type: {scaffold_type}. Use dbt, streamlit, or snowpark.", is_error=True)
+                    return
+                print_system_message(f"Scaffolded {scaffold_type} project at {path}")
+            except Exception as e:
+                print_system_message(f"Scaffolding failed: {e}", is_error=True)
+        else:
+            print_system_message("Usage: /scaffold <dbt|streamlit|snowpark> <project_name>")
     else:
         print_system_message(f"Unknown command: {cmd}", is_error=True)
 

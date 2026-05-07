@@ -13,9 +13,15 @@ class ToolsCore:
 
     def _execute_query(self, sql: str, params: Optional[tuple] = None) -> List[Dict[str, Any]]:
         """Helper to execute SQL and return results as a list of dicts."""
+        from snowninja.governance.policies import check_query_safety
+        
+        if not check_query_safety(sql):
+            return [{"status": "blocked", "message": "Query blocked by governance policy"}]
+
         ctx = get_connection(self.profile)
         cs = ctx.cursor()
         try:
+            cs.execute("ALTER SESSION SET QUERY_TAG = 'snowninja_agent'")
             if params:
                 cs.execute(sql, params)
             else:

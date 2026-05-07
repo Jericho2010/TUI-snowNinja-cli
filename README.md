@@ -1,0 +1,1 @@
+# SnowNinja CLI\n\nA bespoke agent harness for Snowflake architecture, providing an autonomous LLM loop, native scaffolding, and zero-trust query governance.\n\nAll 6 phases of development are complete.
