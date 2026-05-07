@@ -1,13 +1,14 @@
 from enum import Enum
 
 class NimModel(str, Enum):
-    # Reasoning / Planner Models
-    LLAMA_3_1_405B = "meta/llama-3.1-405b-instruct"
-    MISTRAL_LARGE = "mistralai/mistral-large-2411"
+    # Reasoning / Planner Models (Maverick / Next-Gen)
+    LLAMA_4_MAVERICK = "meta/llama-4-maverick-17b-128e-instruct"
+    MISTRAL_LARGE_3 = "mistralai/mistral-large-3-675b-instruct-2512"
     
-    # Coding / Implementer Models
-    QWEN_2_5_CODER_32B = "qwen/qwen2.5-coder-32b-instruct"
-    DEEPSEEK_CODER_V2 = "deepseek-ai/deepseek-coder-v2-instruct"
+    # Coding / Implementer Models (Next-Gen)
+    QWEN_3_CODER = "qwen/qwen3-coder-480b-a35b-instruct"
+    DEEPSEEK_V4_PRO = "deepseek-ai/deepseek-v4-pro"
+    GLM_5_1 = "z-ai/glm-5.1"
 
 class ModelRole(str, Enum):
     PLANNER = "planner"

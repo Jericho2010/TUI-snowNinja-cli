@@ -284,14 +284,14 @@ class SnowNinjaShell:
 
     def _cmd_models(self, _: list[str]) -> None:
         planner_models = [
-            ("meta/llama-3.1-405b-instruct", "★ DEFAULT", "Llama 3.1 405B · Best Reasoning · Tool Calling ✓"),
-            ("mistralai/mistral-large-2411",  "FALLBACK",  "Mistral Large · Fast & Reliable · Tool Calling ✓"),
-            ("meta/llama-3.1-70b-instruct",   "FAST",      "Balanced performance for simple planning"),
+            ("meta/llama-4-maverick-17b-128e-instruct", "★ DEFAULT", "Llama 4 MoE · Maverick · Ultimate Reasoning"),
+            ("mistralai/mistral-large-3-675b-instruct-2512", "FALLBACK", "675B Flagship · Deep Logic · Tool Calling ✓"),
+            ("google/gemma-4-31b-it", "FAST", "Gemma 4 · Ultra-Fast Planning"),
         ]
         implementer_models = [
-            ("mistralai/mistral-large-2411",  "★ DEFAULT",  "Mistral Large · Best for Tool Calling & Logic"),
-            ("qwen/qwen2.5-coder-32b-instruct", "STABLE", "Solid for Python/SQL logic (no tools)"),
-            ("meta/llama-3.1-70b-instruct", "FAST", "Solid fallback for tool calling"),
+            ("qwen/qwen3-coder-480b-a35b-instruct", "★ DEFAULT", "Qwen 3 480B · Best Agentic Coder on NIM"),
+            ("deepseek-ai/deepseek-v4-pro", "STABLE", "DeepSeek V4 · High Fidelity Logic"),
+            ("z-ai/glm-5.1", "NEW", "GLM 5.1 Flagship · Agentic Implementation"),
         ]
 
         def fmt_row(model_id: str, tag: str, desc: str, color: str) -> str:
