@@ -306,19 +306,22 @@ class SnowNinjaShell:
             tag_str = f" [dim white][[/][bold white]{tag}[/][dim white]][/]" if tag else ""
             return f"  [{color}]{model_id}[/{color}]{tag_str}\n    [dim]{desc}[/]"
 
-        planner_rows = "\n".join(fmt_row(m, t, d, "cyan") for m, t, d in planner_models)
-        impl_rows    = "\n".join(fmt_row(m, t, d, "green") for m, t, d in implementer_models)
+        planner_rows = "\n".join(fmt_row(m, t, d, "cyan") for m, t, d in planner_tree)
+        impl_rows    = "\n".join(fmt_row(m, t, d, "green") for m, t, d in implementer_tree)
+        spec_rows    = "\n".join(fmt_row(m, t, d, "yellow") for m, t, d in specialized_tiers)
 
         table_content = (
-            f"[bold white]📐 Planner Lane[/] [dim](reasoning · architecture · pipeline design)[/]\n\n"
+            f"[bold white]📐 Planner Lane Tree[/] [dim](Sequential Fallback)[/]\n\n"
             f"{planner_rows}\n\n"
-            f"[bold white]⚙  Implementer Lane[/] [dim](SQL · Python UDFs · SnowSQL)[/]\n\n"
+            f"[bold white]⚙  Implementer Lane Tree[/] [dim](Sequential Fallback)[/]\n\n"
             f"{impl_rows}\n\n"
+            f"[bold white]✨ Specialized Tiers[/] [dim](Available to both lanes)[/]\n\n"
+            f"{spec_rows}\n\n"
             f"[dim]Manual switch: [yellow]/model planner <id>[/]  or  [yellow]/model implementer <id>[/][/]"
         )
         console.print(Panel(
             table_content,
-            title="[bold white]NIM Model Registry[/]",
+            title=f"SnowNinja v{VERSION} — NIM Frontier Registry",
             border_style="bright_blue",
             padding=(1, 2),
         ))
