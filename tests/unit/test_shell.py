@@ -1,6 +1,5 @@
 import pytest
-from snowninja.repl.shell import SLASH_COMMANDS, MODES, SlashCompleter
-from snowninja.tui.panels import SF_BLUE, SF_NAVY, SF_GRAY, SF_WHITE, SF_SUCCESS, SF_WARNING, SF_ERROR
+from snowninja.repl.shell import SLASH_COMMANDS, MODES, SlashCompleter, SF_BLUE, SF_NAVY, SF_YELLOW
 from snowninja.llm.models import ModelRole
 from prompt_toolkit.document import Document
 
@@ -9,8 +8,8 @@ def test_slash_commands_defined():
     assert len(SLASH_COMMANDS) >= 20
 
 def test_all_modes_in_modes_dict():
-    """plan, implement, explore, operate, govern, cortex all in MODES."""
-    expected_modes = ["plan", "implement", "explore", "operate", "govern", "cortex"]
+    """plan, implement, explore, operate, govern, cost all in MODES."""
+    expected_modes = ["plan", "implement", "explore", "operate", "govern", "cost"]
     for mode in expected_modes:
         assert mode in MODES
 
@@ -31,12 +30,12 @@ def test_slash_completer_no_match():
 
 def test_modes_map_to_valid_roles():
     """Every mode maps to 'planner' or 'implementer'."""
-    for mode, role in MODES.items():
-        assert role in [ModelRole.PLANNER, ModelRole.IMPLEMENTER]
+    for mode, (role, icon, color) in MODES.items():
+        assert role in [ModelRole.PLANNER.value, ModelRole.IMPLEMENTER.value]
 
 def test_brand_colors_are_hex():
     """All SF_* color constants are valid hex (#XXXXXX)."""
-    colors = [SF_BLUE, SF_NAVY, SF_GRAY, SF_WHITE, SF_SUCCESS, SF_WARNING, SF_ERROR]
+    colors = [SF_BLUE, SF_NAVY, SF_YELLOW]
     for color in colors:
         assert color.startswith("#")
         assert len(color) == 7

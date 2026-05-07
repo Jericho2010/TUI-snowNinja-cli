@@ -79,7 +79,6 @@ class ToolsCore:
 
     # --- SQL Domain (3) ---
     def execute_sql(self, query: str) -> List[Dict[str, Any]]:
-        # TODO: Add query tagging in Phase 6
         return self._execute_query(query)
 
     def validate_sql(self, query: str) -> Dict[str, Any]:
@@ -149,7 +148,6 @@ class ToolsCore:
 
     def cortex_classify(self, text: str, categories: List[str]) -> str:
         # Note: Classify isn't always standard Cortex everywhere, using basic completion fallback if needed
-        # But we'll try the snowflake.cortex function syntax.
         sql = f"SELECT snowflake.cortex.complete('mistral-large', 'Classify this text: {text} into one of these categories: {categories}') AS result"
         res = self._execute_query(sql)
         return res[0]["RESULT"] if res else ""
@@ -223,100 +221,5 @@ class ToolsCore:
             return {"status": "error", "stdout": e.stdout, "stderr": e.stderr, "exit_code": e.returncode}
 
 
-# JSON Schemas for Tool Calling (a subset to represent the 40+ tools)
-# We will implement SNOWFLAKE_TOOLS and TOOL_DISPATCH here to make them accessible to the LLM Client later.
-
-def generate_tool_schemas() -> List[Dict[str, Any]]:
-    """Generate OpenAI-compatible function schemas for all tools in ToolsCore."""
-    return [
-        {
-            "type": "function",
-            "function": {
-                "name": "get_current_user",
-                "description": "Get current Snowflake user, role, and warehouse.",
-                "parameters": {"type": "object", "properties": {}}
-            }
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "list_databases",
-                "description": "List all databases accessible to the current role.",
-                "parameters": {"type": "object", "properties": {}}
-            }
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "execute_sql",
-                "description": "Execute arbitrary SQL against Snowflake.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {"type": "string", "description": "The SQL query to execute"}
-                    },
-                    "required": ["query"]
-                }
-            }
-        },
-        # More schemas will be populated here as needed by the agent loop...
-    ]
-
-# Mapping tool names to their implementations
-# This creates a singleton instance to handle dispatch, or it can be instantiated per request.
-_core = ToolsCore()
-
-TOOL_DISPATCH = {
-    "get_current_user": _core.get_current_user,
-    "get_account_info": _core.get_account_info,
-    "list_connection_profiles": _core.list_connection_profiles,
-    "list_databases": _core.list_databases,
-    "list_schemas": _core.list_schemas,
-    "list_tables": _core.list_tables,
-    "describe_table": _core.describe_table,
-    "search_objects": _core.search_objects,
-    "get_table_ddl": _core.get_table_ddl,
-    "execute_sql": _core.execute_sql,
-    "validate_sql": _core.validate_sql,
-    "get_query_history": _core.get_query_history,
-    "list_warehouses": _core.list_warehouses,
-    "create_warehouse": _core.create_warehouse,
-    "resize_warehouse": _core.resize_warehouse,
-    "suspend_warehouse": _core.suspend_warehouse,
-    "create_database": _core.create_database,
-    "create_schema": _core.create_schema,
-    "create_table": _core.create_table,
-    "drop_object": _core.drop_object,
-    "list_stages": _core.list_stages,
-    "list_tasks": _core.list_tasks,
-    "list_streams": _core.list_streams,
-    "list_pipes": _core.list_pipes,
-    "cortex_complete": _core.cortex_complete,
-    "cortex_summarize": _core.cortex_summarize,
-    "cortex_sentiment": _core.cortex_sentiment,
-    "cortex_classify": _core.cortex_classify,
-    "list_roles": _core.list_roles,
-    "show_grants_on": _core.show_grants_on,
-    "show_grants_to": _core.show_grants_to,
-    "list_tags": _core.list_tags,
-    "list_masking_policies": _core.list_masking_policies,
-    "list_row_access_policies": _core.list_row_access_policies,
-    "get_warehouse_usage": _core.get_warehouse_usage,
-    "get_storage_usage": _core.get_storage_usage,
-    "get_login_history": _core.get_login_history,
-    "write_local_file": _core.write_local_file,
-    "read_local_file": _core.read_local_file,
-    "run_shell_command": _core.run_shell_command,
-}
-
-# Auto-generate basic schemas for all tools in dispatch map if not manually defined above
-SNOWFLAKE_TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": name,
-            "description": f"Executes {name}", # In a real implementation we'd parse docstrings
-            "parameters": {"type": "object", "properties": {}} # Simplified parameter schema for test pass
-        }
-    } for name in TOOL_DISPATCH.keys()
-]
+# Singleton instance
+tools = ToolsCore()

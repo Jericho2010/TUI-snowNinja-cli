@@ -1,39 +1,69 @@
 import pytest
 import os
 from pathlib import Path
-from snowninja.scaffold.engine import create_dbt_project, create_streamlit_app, create_snowpark_project
+from snowninja.scaffold.engine import ScaffoldEngine
 
-def test_scaffold_dbt(tmp_path):
-    """Creates files (dbt_project.yml, profiles.yml)."""
-    project_dir = create_dbt_project("my_dbt_proj", target_dir=str(tmp_path))
+def test_scaffold_pipeline(tmp_path, monkeypatch):
+    """Creates files (01_bronze.sql, 02_silver.sql)."""
+    engine = ScaffoldEngine()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("rich.prompt.Prompt.ask", lambda *a, **k: "test_pipeline")
     
-    assert os.path.exists(project_dir)
-    assert os.path.exists(os.path.join(project_dir, "dbt_project.yml"))
-    assert os.path.exists(os.path.join(project_dir, "profiles.yml"))
-    assert os.path.exists(os.path.join(project_dir, "models"))
+    engine.run("pipeline-project")
     
-    content = Path(os.path.join(project_dir, "dbt_project.yml")).read_text()
-    assert "name: 'my_dbt_proj'" in content
+    project_dir = tmp_path / "test_pipeline"
+    assert project_dir.exists()
+    assert (project_dir / "src" / "01_bronze.sql").exists()
+    assert (project_dir / "src" / "02_silver.sql").exists()
+    assert (project_dir / "README.md").exists()
+    
+    content = (project_dir / "src" / "01_bronze.sql").read_text()
+    assert "CREATE OR REPLACE DYNAMIC TABLE bronze_events" in content
 
-def test_scaffold_streamlit(tmp_path):
-    """Creates files (app.py, environment.yml)."""
-    project_dir = create_streamlit_app("my_st_app", target_dir=str(tmp_path))
+def test_scaffold_app(tmp_path, monkeypatch):
+    """Creates files (app.py, snowflake.yml)."""
+    engine = ScaffoldEngine()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("rich.prompt.Prompt.ask", lambda *a, **k: "test_app")
     
-    assert os.path.exists(project_dir)
-    assert os.path.exists(os.path.join(project_dir, "app.py"))
-    assert os.path.exists(os.path.join(project_dir, "environment.yml"))
+    engine.run("app-project")
     
-    content = Path(os.path.join(project_dir, "app.py")).read_text()
+    project_dir = tmp_path / "test_app"
+    assert project_dir.exists()
+    assert (project_dir / "app.py").exists()
+    assert (project_dir / "snowflake.yml").exists()
+    
+    content = (project_dir / "app.py").read_text()
     assert "import streamlit as st" in content
     assert "get_active_session" in content
 
-def test_scaffold_snowpark(tmp_path):
-    """Creates files (src/udfs.py, requirements.txt)."""
-    project_dir = create_snowpark_project("my_snowpark", target_dir=str(tmp_path))
+def test_scaffold_cortex(tmp_path, monkeypatch):
+    """Creates files (process_docs.sql)."""
+    engine = ScaffoldEngine()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("rich.prompt.Prompt.ask", lambda *a, **k: "test_cortex")
     
-    assert os.path.exists(project_dir)
-    assert os.path.exists(os.path.join(project_dir, "src", "udfs.py"))
-    assert os.path.exists(os.path.join(project_dir, "requirements.txt"))
+    engine.run("cortex-project")
     
-    content = Path(os.path.join(project_dir, "src", "udfs.py")).read_text()
-    assert "def hello_udf" in content
+    project_dir = tmp_path / "test_cortex"
+    assert project_dir.exists()
+    assert (project_dir / "process_docs.sql").exists()
+    
+    content = (project_dir / "process_docs.sql").read_text()
+    assert "SNOWFLAKE.CORTEX.SENTIMENT" in content
+
+def test_scaffold_snowpark(tmp_path, monkeypatch):
+    """Creates files (src/functions.py, snowflake.yml)."""
+    engine = ScaffoldEngine()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("rich.prompt.Prompt.ask", lambda *a, **k: "test_snowpark")
+    
+    engine.run("snowpark-project")
+    
+    project_dir = tmp_path / "test_snowpark"
+    assert project_dir.exists()
+    assert (project_dir / "src" / "functions.py").exists()
+    assert (project_dir / "snowflake.yml").exists()
+    
+    content = (project_dir / "src" / "functions.py").read_text()
+    assert "def clean_text" in content

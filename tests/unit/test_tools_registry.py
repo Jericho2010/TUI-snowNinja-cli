@@ -1,6 +1,7 @@
 import pytest
 from pathlib import Path
-from snowninja.actions.tools_core import SNOWFLAKE_TOOLS, TOOL_DISPATCH, ToolsCore
+from snowninja.actions.tools_core import ToolsCore
+from snowninja.llm.nim_client import SNOWFLAKE_TOOLS, TOOL_DISPATCH
 
 def test_tool_count():
     """At least 35 tools registered in SNOWFLAKE_TOOLS."""
