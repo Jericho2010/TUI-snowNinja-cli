@@ -60,6 +60,23 @@ snowninja
 
 ---
 
+## 🛡️ Security & Privacy
+
+SnowNinja is designed with a **"Private by Design"** architecture:
+- **No Hardcoded Secrets**: Your Snowflake credentials and NVIDIA API keys are never stored in this repository.
+- **Local Persistence**: All sensitive data is stored in `~/.snowninja/config.yaml` on your local machine.
+- **Safe Execution**: Local shell commands are gated by a strict allowlist.
+
+For more details, see [SECURITY.md](SECURITY.md).
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on reporting bugs or submitting pull requests.
+
+---
+
 ## 📜 License
 
-Built with ❄️ and 🥷 by the SnowNinja Team. Part of the AI-Dev-Kit ecosystem.
+Built with ❄️ and 🥷 by the SnowNinja Team. Part of the AI-Dev-Kit ecosystem. Licensed under the [MIT License](LICENSE).
