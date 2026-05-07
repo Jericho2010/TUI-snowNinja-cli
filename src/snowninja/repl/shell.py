@@ -74,15 +74,18 @@ NINJA_ASCII = r"""
 SLASH_COMMANDS = {
     "/help":               "Show available commands",
     "/plan":               "Switch to Planner mode (reasoning model)",
+    "/planner":            "Alias for /plan",
     "/implement":          "Switch to Implementer mode (coder model)",
+    "/implementer":        "Alias for /implement",
     "/interview":          "Start guided requirements interview — /interview <goal>",
     "/go":                 "Finalize the interview and generate Requirements + Task List",
     "/explore":            "Switch to Explore mode (read-only data inspection)",
+    "/explorer":           "Alias for /explore",
     "/operate":            "Switch to Operate mode (run pipelines, tasks, SQL)",
     "/govern":             "Switch to Govern mode (roles, grants, policies)",
     "/cost":               "Switch to Cost mode (warehouses, credits)",
-    "/model planner ":     "Set the planner model  e.g. /model planner moonshotai/kimi-k2.6",
-    "/model implementer ": "Set the implementer model  e.g. /model implementer qwen/qwen3-coder-480b-a35b-instruct",
+    "/model planner ":     "Set the planner model  e.g. /model planner meta/llama-3.1-405b-instruct",
+    "/model implementer ": "Set the implementer model  e.g. /model implementer qwen/qwen2.5-coder-32b-instruct",
     "/models":             "List available NIM model families",
     "/tools":              "List all loaded Snowflake action tools",
     "/skills":             "List skill guides (/skills <name> to view one)",
@@ -266,16 +269,14 @@ class SnowNinjaShell:
 
     def _cmd_models(self, _: list[str]) -> None:
         planner_models = [
-            ("meta/llama-4-maverick-17b-128e-instruct", "★ DEFAULT", "Llama 4 MoE · 8/8 score · 7s · tool calling ✓"),
-            ("mistralai/mistral-medium-3.5-128b",        "FALLBACK",  "128K ctx · 8/8 score · reliable · tool calling ✓"),
-            ("moonshotai/kimi-k2.6",                     "★ PREMIUM", "11T MoE · 6/8 score · 120s · tool calling ✓"),
-            ("nvidia/llama-3.1-nemotron-ultra-253b-v1",  "NO TOOLS",  "253B · deep reasoning · text-only"),
+            ("meta/llama-3.1-405b-instruct", "★ DEFAULT", "Llama 3.1 405B · Best Reasoning · Tool Calling ✓"),
+            ("mistralai/mistral-large-2411",  "FALLBACK",  "Mistral Large · Fast & Reliable · Tool Calling ✓"),
+            ("meta/llama-3.1-70b-instruct",   "FAST",      "Balanced performance for simple planning"),
         ]
         implementer_models = [
-            ("qwen/qwen3-coder-480b-a35b-instruct",         "★ DEFAULT", "480B · 256K ctx · agentic coding · best on NIM"),
-            ("qwen/qwen3.5-122b-a10b",                      "NEW",       "122B MoE · agent-ready · tool calling"),
-            ("deepseek-ai/deepseek-v4-flash",               "FAST",      "28B MoE · 1M-token context · fast agentic implementation"),
-            ("z-ai/glm-5.1",                                "NEW",       "GLM-5.1 flagship · agentic workflows"),
+            ("qwen/qwen2.5-coder-32b-instruct", "★ DEFAULT", "Best on NIM for SQL & Python implementation"),
+            ("deepseek-ai/deepseek-coder-v2-instruct", "FAST", "Extremely fast coding completions"),
+            ("meta/llama-3.1-70b-instruct", "STABLE", "Solid fallback for tool calling"),
         ]
 
         def fmt_row(model_id: str, tag: str, desc: str, color: str) -> str:
@@ -589,9 +590,10 @@ class SnowNinjaShell:
 
         if cmd == "/help":                   self._cmd_help(parts); return True
         if cmd in MODES:                     self._cmd_mode(parts); return True
-        if cmd in ("/plan", "/implement",
-                   "/explore", "/operate",
-                   "/govern", "/cost"):      self._cmd_mode(parts); return True
+        if cmd in ("/plan", "/planner",
+                   "/implement", "/implementer",
+                   "/explore", "/explorer",
+                   "/operate", "/govern", "/cost"): self._cmd_mode(parts); return True
         if cmd == "/models":                 self._cmd_models(parts); return True
         if cmd == "/tasks":                  self._cmd_tasks(parts); return True
         if cmd == "/skills":                 self._cmd_skills(parts); return True
