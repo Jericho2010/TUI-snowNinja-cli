@@ -21,7 +21,7 @@ class SnowNinjaConfig(BaseModel):
         description="Model assigned to the Planner lane"
     )
     implementer_model: str = Field(
-        default="qwen/qwen2.5-coder-32b-instruct", 
+        default="mistralai/mistral-large-2411", 
         description="Model assigned to the Implementer lane"
     )
 

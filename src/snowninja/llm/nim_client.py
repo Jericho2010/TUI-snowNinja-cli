@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 # Models that don't support tool calling endpoints, meaning we need to use a standard chat format.
 NO_TOOLS_MODELS = [
-    "nvidia/llama-3.1-nemotron-ultra-253b-v1"
+    "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+    "qwen/qwen2.5-coder-32b-instruct"
 ]
 
 # --- SYSTEM PROMPTS ---
