@@ -20,6 +20,8 @@ NO_TOOLS_MODELS = [
     "qwen/qwen2.5-coder-32b-instruct"
 ]
 
+import re
+
 # --- SYSTEM PROMPTS ---
 
 SYSTEM_PROMPTS = {
@@ -245,19 +247,51 @@ class NimClient:
         except Exception as e:
             return json.dumps({"status": "error", "message": str(e), "traceback": traceback.format_exc()})
 
+    def _sniff_json_tool_calls(self, text: str) -> List[Tuple[str, Dict[str, Any]]]:
+        """
+        Detects JSON-formatted tool calls within raw text response.
+        Handles the case where models (like Maverick) leak JSON instead of using the API field.
+        """
+        found = []
+        # Look for JSON blocks starting with {"type": "function", "name": "..."
+        pattern = r'\{"type":\s*"function",\s*"name":\s*"([^"]+)",\s*"parameters":\s*(\{.*?\})\}'
+        matches = re.finditer(pattern, text, re.DOTALL)
+        for match in matches:
+            name = match.group(1)
+            try:
+                args = json.loads(match.group(2))
+                found.append((name, args))
+            except json.JSONDecodeError:
+                continue
+        return found
+
+    def get_fallback_chain(self, role: ModelRole) -> List[str]:
+        """Returns the sequential fallback tree for the specified lane."""
+        if role == ModelRole.PLANNER:
+            return [
+                NimModel.LLAMA_4_MAVERICK.value,
+                NimModel.MISTRAL_LARGE_3.value,
+                NimModel.NEMOTRON_4_340B.value,
+                NimModel.GEMMA_4_31B.value
+            ]
+        else: # IMPLEMENTER
+            return [
+                NimModel.QWEN_3_CODER.value,
+                NimModel.GLM_5_1.value,
+                NimModel.DEVSTRAL_2.value,
+                NimModel.DEEPSEEK_V4_PRO.value
+            ]
+
     async def _resolve_model(self, requested_model: str, role: ModelRole) -> str:
         """
         Probe the NIM API to see if the requested model is alive.
-        If it fails, fall back to standard reliable models.
+        If it fails, fall back to the sequential lane-based tree.
         """
         client = self._get_client()
-        fallbacks = [
-            NimModel.MISTRAL_LARGE_3.value,
-            NimModel.QWEN_3_CODER.value,
-            NimModel.DEEPSEEK_V4_PRO.value
-        ]
         
-        chain = [requested_model] + [m for m in fallbacks if m != requested_model]
+        # Build the chain: Requested first, then the lane-specific fallback tree
+        lane_tree = self.get_fallback_chain(role)
+        chain = [requested_model] + [m for m in lane_tree if m != requested_model]
         
         for model in chain:
             try:
@@ -372,8 +406,27 @@ class NimClient:
                         "content": tool_result
                     })
             else:
-                # No more tool calls, return final response
-                final_text = response_msg.content or ""
+                # No tool_calls field, but let's SNIFF the text for raw JSON leaks
+                content = response_msg.content or ""
+                sniffed_calls = self._sniff_json_tool_calls(content)
+                
+                if sniffed_calls:
+                    for tool_name, tool_args in sniffed_calls:
+                        yield "tool_call", (tool_name, tool_args)
+                        tool_result = await self._execute_tool(tool_name, tool_args)
+                        yield "tool_result", tool_result
+                        
+                        # Add a fake tool message to history to keep the loop valid
+                        self._histories[role].append({
+                            "role": "tool",
+                            "name": tool_name,
+                            "content": tool_result
+                        })
+                    # Re-run the loop to let the model react to the sniffed results
+                    continue
+
+                # No more tool calls (real or sniffed), return final response
+                final_text = content
                 yield "text", final_text
                 return
                 
