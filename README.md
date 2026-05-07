@@ -18,8 +18,17 @@ SnowNinja operates on a **Dual-Lane Execution Model**, separating reasoning from
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Installation
 
+### Option 1: Global Tool (Recommended)
+Install SnowNinja as a global tool available from any directory:
+```bash
+git clone https://github.com/Jericho2010/TUI-snowNinja-cli.git
+cd TUI-snowNinja-cli
+uv tool install .
+```
+
+### Option 2: Local Development
 ```bash
 # 1. Clone and Initialize
 git clone https://github.com/Jericho2010/TUI-snowNinja-cli.git
@@ -74,6 +83,16 @@ For more details, see [SECURITY.md](SECURITY.md).
 ## 🤝 Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on reporting bugs or submitting pull requests.
+
+---
+
+## 📋 Build Log
+
+| Date | Action | Summary |
+| :--- | :--- | :--- |
+| 2026-05-06 | Init | Ported architectural blueprint from BricksNinja; implemented Dual-Lane loop. |
+| 2026-05-07 | Snowpark | Integrated Snowflake-native tools for UC, Cortex, and Warehouses. |
+| 2026-05-08 | Global Tool | Professionalized installation via `uv tool install`; fixed command-not-found errors. |
 
 ---
 
