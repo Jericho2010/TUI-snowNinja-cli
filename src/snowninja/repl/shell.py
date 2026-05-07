@@ -32,7 +32,7 @@ from snowninja.core.config import save_config
 
 console = Console()
 
-VERSION = "0.2.0"
+VERSION = "0.2.3"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Snowflake Brand Palette
