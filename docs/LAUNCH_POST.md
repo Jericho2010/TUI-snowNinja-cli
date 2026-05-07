@@ -8,13 +8,13 @@ Why SnowNinja?
 
 Most AI tools just spit out SQL for you to copy and paste. SnowNinja is different. It’s a **Compound AI System** that actually understands your environment:
 
-❄️ **Dual-Lane Intelligence**: A "Planner" model (Llama 405B) reasons about your architecture and builds a task list, while an "Implementer" model (Qwen Coder) autonomously executes the code.
+❄️ **Dual-Lane Intelligence**: A "Planner" model (Llama 3.1 405B) reasons about your architecture and builds a task list, while an "Implementer" model (Mistral Large 2411) autonomously executes the code.
 
 ❄️ **Live Environment Awareness**: The agent uses its own tools to inspect your databases, schemas, and tables in real-time. It doesn't hallucinate—it explores.
 
 ❄️ **Autonomous Execution**: From creating warehouses and databases to building Medallion-style pipelines and Streamlit apps, SnowNinja handles the heavy lifting directly from your CLI.
 
-❄️ **Production-Ready Resilience**: Powered by NVIDIA NIM with built-in fallback logic, ensuring you never hit a rate-limit wall in the middle of a build.
+❄️ **Production-Ready Resilience**: Powered by NVIDIA NIM with built-in fallback logic (Mistral → Llama 70B), ensuring you never hit a rate-limit wall in the middle of a build.
 
 Stop copy-pasting SQL and start orchestrating intent. 
 

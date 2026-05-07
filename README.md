@@ -9,6 +9,35 @@ SnowNinja is a high-performance, agentic TUI (Terminal User Interface) designed 
 
 ---
 
+## 🎨 System Overview
+
+```mermaid
+flowchart LR
+    classDef user fill:#1a1a2e,stroke:#29B5E8,color:#fff,font-weight:bold
+    classDef shell fill:#1B3B52,stroke:#29B5E8,color:#fff
+    classDef nim fill:#0d2233,stroke:#76B900,color:#fff
+    classDef snow fill:#29B5E8,stroke:#1A82A8,color:#fff
+    classDef store fill:#37474f,stroke:#90a4ae,color:#ccc,stroke-dasharray:4
+
+    U(["👤 You\n(Terminal)"]):::user
+    SN["🥷 SnowNinja Shell\nprompt_toolkit REPL"]:::shell
+    NIM["⚡ NVIDIA NIM\nOpenAI-compatible API"]:::nim
+    SNOW[("❄️ Snowflake\nData Cloud")]:::snow
+    CFG[("⚙️ ~/.snowninja/\nconfig.yaml")]:::store
+    LOCAL[("📁 Local Filesystem\n& Shell")]:::store
+
+    U -->|"natural language"| SN
+    SN -->|"structured LLM call"| NIM
+    NIM -->|"tool_call events"| SN
+    SN -->|"Snowflake Python Connector"| SNOW
+    SNOW -->|"live data"| SN
+    SN -->|"rendered response"| U
+    SN -->|"write_local_file\nrun_shell_command"| LOCAL
+    CFG -.->|"PATs & profile config"| SN
+```
+
+---
+
 ## 🥷 The Agentic Philosophy
 
 SnowNinja operates on a **Dual-Lane Execution Model**, separating reasoning from implementation to ensure maximum architectural integrity:
