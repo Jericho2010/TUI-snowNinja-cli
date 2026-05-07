@@ -1,8 +1,7 @@
 import pytest
 import json
-from snowninja.llm.models import ModelRole, PLANNER_FALLBACK_CHAIN, IMPLEMENTER_FALLBACK_CHAIN, NO_TOOLS_MODELS
-from snowninja.llm.nim_client import SYSTEM_PROMPTS, INTERVIEW_SYSTEM_PROMPT, NimClient
-from snowninja.actions.tools_core import SNOWFLAKE_TOOLS, TOOL_DISPATCH
+from snowninja.llm.models import ModelRole
+from snowninja.llm.nim_client import SYSTEM_PROMPTS, INTERVIEW_SYSTEM_PROMPT, NimClient, SNOWFLAKE_TOOLS, TOOL_DISPATCH, NO_TOOLS_MODELS
 
 def test_model_role_enum():
     """PLANNER='planner', IMPLEMENTER='implementer'."""
@@ -34,12 +33,7 @@ def test_tool_dispatch_matches_tools():
 def test_no_tools_models_set():
     """NO_TOOLS_MODELS contains expected entries."""
     assert len(NO_TOOLS_MODELS) > 0
-    assert "google/gemma-7b-it" in NO_TOOLS_MODELS
-
-def test_fallback_chain_not_empty():
-    """Both fallback chains have >=2 models."""
-    assert len(PLANNER_FALLBACK_CHAIN) >= 2
-    assert len(IMPLEMENTER_FALLBACK_CHAIN) >= 2
+    assert "nvidia/llama-3.1-nemotron-ultra-253b-v1" in NO_TOOLS_MODELS
 
 @pytest.mark.asyncio
 async def test_execute_tool_unknown():

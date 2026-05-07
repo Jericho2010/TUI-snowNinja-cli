@@ -13,7 +13,6 @@ def test_config_defaults():
 
 def test_config_roundtrip(tmp_path, monkeypatch):
     """save_config → load_config roundtrip preserves all fields."""
-    # Mock CONFIG_FILE and CONFIG_DIR to use tmp_path
     test_config_dir = tmp_path / ".snowninja"
     test_config_file = test_config_dir / "config.yaml"
     monkeypatch.setattr("snowninja.core.config.CONFIG_DIR", test_config_dir)

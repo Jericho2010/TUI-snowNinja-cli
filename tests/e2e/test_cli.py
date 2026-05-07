@@ -1,6 +1,5 @@
 from typer.testing import CliRunner
 from snowninja.cli import app
-from snowninja.session import session
 
 runner = CliRunner()
 
@@ -11,7 +10,7 @@ def test_cli_help():
     assert "SnowNinja" in result.stdout
 
 def test_cli_setup_help():
-    """snowninja setup --help exits 0."""
+    """snowninja setup --help should exit properly."""
     result = runner.invoke(app, ["setup", "--help"])
     assert result.exit_code == 0
 
@@ -23,7 +22,11 @@ def test_cli_doctor_help():
 def test_cli_unconfigured_exits(monkeypatch):
     """Without config, snowninja exits code 1."""
     # Force unconfigured state
-    monkeypatch.setattr("snowninja.session.SessionManager.is_configured", False)
+    class MockSession:
+        is_configured = False
+        config = None
+        
+    monkeypatch.setattr("snowninja.cli.session", MockSession())
     
     result = runner.invoke(app)
     assert result.exit_code == 1
