@@ -74,13 +74,10 @@ NINJA_ASCII = r"""
 SLASH_COMMANDS = {
     "/help":               "Show available commands",
     "/plan":               "Switch to Planner mode (reasoning model)",
-    "/planner":            "Alias for /plan",
     "/implement":          "Switch to Implementer mode (coder model)",
-    "/implementer":        "Alias for /implement",
     "/interview":          "Start guided requirements interview — /interview <goal>",
     "/go":                 "Finalize the interview and generate Requirements + Task List",
     "/explore":            "Switch to Explore mode (read-only data inspection)",
-    "/explorer":           "Alias for /explore",
     "/operate":            "Switch to Operate mode (run pipelines, tasks, SQL)",
     "/govern":             "Switch to Govern mode (roles, grants, policies)",
     "/cost":               "Switch to Cost mode (warehouses, credits)",
@@ -616,9 +613,7 @@ class SnowNinjaShell:
 
         if cmd == "/help":                   self._cmd_help(parts); return True
         if cmd in MODES:                     self._cmd_mode(parts); return True
-        if cmd in ("/plan", "/planner",
-                   "/implement", "/implementer",
-                   "/explore", "/explorer",
+        if cmd in ("/plan", "/implement", "/explore",
                    "/operate", "/govern", "/cost"): self._cmd_mode(parts); return True
         if cmd == "/models":                 self._cmd_models(parts); return True
         if cmd == "/tasks":                  self._cmd_tasks(parts); return True
