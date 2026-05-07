@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+build/
+dist/
+*.egg-info/
+
+# Environments
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+tests/data/
+
+# IDEs
+.vscode/
+.idea/
+
+# SnowNinja Specific
+~/.snowninja/
+config.yaml
+*.log
+.snowninja_history
