@@ -17,11 +17,11 @@ class SnowNinjaConfig(BaseModel):
     
     # Model preferences
     planner_model: str = Field(
-        default="meta/llama-3.1-405b-instruct", 
+        default="meta/llama-3.3-70b-instruct", 
         description="Model assigned to the Planner lane"
     )
     implementer_model: str = Field(
-        default="qwen/qwen2.5-coder-32b-instruct", 
+        default="meta/llama-3.3-70b-instruct", 
         description="Model assigned to the Implementer lane"
     )
 
