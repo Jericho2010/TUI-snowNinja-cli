@@ -1,0 +1,20 @@
+[project]
+name = "snowninja"
+version = "0.1.0"
+description = "SnowNinja — Personal Snowflake Agent Harness"
+requires-python = ">=3.10"
+dependencies = [
+    "typer>=0.12", "rich>=13.7", "prompt-toolkit>=3.0.43",
+    "pydantic>=2.6", "pyyaml>=6.0", "openai>=1.10",
+    "snowflake-connector-python>=3.0", "snowflake>=1.0", "toml>=0.10",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "pytest-cov>=4.1"]
+
+[project.scripts]
+snowninja = "snowninja.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
