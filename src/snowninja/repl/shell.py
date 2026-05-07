@@ -286,6 +286,7 @@ class SnowNinjaShell:
         planner_models = [
             ("meta/llama-4-maverick-17b-128e-instruct", "★ DEFAULT", "Llama 4 MoE · Maverick · Ultimate Reasoning"),
             ("mistralai/mistral-large-3-675b-instruct-2512", "FALLBACK", "675B Flagship · Deep Logic · Tool Calling ✓"),
+            ("moonshotai/kimi-k2.6", "★ PREMIUM", "Kimi 2.6 · 11T MoE · Deep Context Reasoning"),
             ("google/gemma-4-31b-it", "FAST", "Gemma 4 · Ultra-Fast Planning"),
         ]
         implementer_models = [
