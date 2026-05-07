@@ -2,6 +2,9 @@
 
 **The Principal Architect’s Workbench for the Snowflake Ecosystem.**
 
+[![NIM Powered](https://img.shields.io/badge/LLM-NVIDIA_NIM-76B900?style=for-the-badge&logo=nvidia)](https://www.nvidia.com/en-us/ai-data-science/generative-ai/nim/)
+[![Snowflake](https://img.shields.io/badge/Cloud-Snowflake-29B5E8?style=for-the-badge&logo=snowflake)](https://www.snowflake.com/)
+
 SnowNinja is a high-performance, agentic TUI (Terminal User Interface) designed for Snowflake engineers and architects. It provides a production-grade autonomous agent harness backed by **NVIDIA NIM** models, enabling full-cycle data engineering—from requirement gathering to live pipeline implementation—directly from your terminal.
 
 ---
@@ -17,56 +20,46 @@ SnowNinja operates on a **Dual-Lane Execution Model**, separating reasoning from
 
 ## 🚀 Quick Start
 
-### 1. Installation
-Clone the repository and install in editable mode using `uv`:
-
 ```bash
+# 1. Clone and Initialize
 git clone https://github.com/Jericho2010/TUI-snowNinja-cli.git
 cd TUI-snowNinja-cli
 ./setup.sh
-```
 
-### 2. Configuration
-Run the setup wizard to configure your NVIDIA PAT and Snowflake connection:
-
-```bash
+# 2. Configure Credentials
 snowninja setup
-```
 
-### 3. Verify
-Run the diagnostics tool to ensure all systems are go:
-
-```bash
+# 3. Verify Connection
 snowninja doctor
-```
 
-### 4. Launch
-Start the interactive cockpit:
-
-```bash
+# 4. Launch the Cockpit
 snowninja
 ```
 
 ---
 
-## 🛠 Features
+## 💎 Feature Matrix
 
-- **Autonomous Agentic Loop**: Built-in tool calling for the Snowflake Python SDK, SQL execution, and local file I/O.
-- **Resilient Fallbacks**: Multi-stage model fallback logic to handle NVIDIA NIM API rate limits or capacity issues automatically.
-- **Interactive Interview Flow**: Use `/interview` to let the agent guide you through requirements gathering before building a plan.
-- **Project Scaffolding**: Use `/scaffold` to instantly generate local templates for Medallion Pipelines, Streamlit apps, or Snowpark projects.
-- **Dynamic Skill Injection**: RAG-style skill routing that injects domain-specific Snowflake guides into the agent's context on the fly.
+| Feature | Description | Status |
+| :--- | :--- | :--- |
+| **Dual-Lane Loop** | Separate Planner/Implementer lanes for architectural rigor. | ✅ Production |
+| **Resilient NIM Client** | Auto-fallback chain (Llama → Mistral → Qwen) for 100% uptime. | ✅ Production |
+| **Snowflake Action Tools** | 45+ built-in tools for UC, Cortex, Warehouses, and Pipelines. | ✅ Production |
+| **Interactive Interview** | `/interview` mode for guided requirements gathering. | ✅ Production |
+| **Dynamic Skill Router** | RAG-style injection of domain-specific Snowflake guides. | ✅ Production |
+| **Project Scaffolding** | `/scaffold` for instantly creating Medallion/Snowpark repos. | ✅ Production |
+| **Safe Shell Execution** | Gated subprocess execution for local ops (git, uv, snow). | ✅ Production |
 
 ---
 
 ## 📂 Documentation
 
-- [**Architecture Guide**](docs/ARCHITECTURE.md): Deep dive into the dual-lane agent harness.
-- [**Command Reference**](docs/COMMANDS.md): Full manual for slash commands and TUI navigation.
-- [**Launch Post**](docs/LAUNCH_POST.md): Announcement template for social sharing.
+*   [**Architecture Reference**](docs/ARCHITECTURE.md): Deep-dive into the async loops, fallback chains, and tool integration.
+*   [**Command Manual**](docs/COMMANDS.md): Comprehensive guide to slash commands and TUI navigation.
+*   [**Launch Strategy**](docs/LAUNCH_POST.md): Announcement template for high-engagement release.
 
 ---
 
 ## 📜 License
 
-Built with ❄️ and 🥷 by the SnowNinja Team.
+Built with ❄️ and 🥷 by the SnowNinja Team. Part of the AI-Dev-Kit ecosystem.

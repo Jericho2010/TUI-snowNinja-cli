@@ -1,61 +1,77 @@
-# SnowNinja Command Reference
+# SnowNinja — Command Manual
 
-SnowNinja is controlled via a series of interactive slash commands. This guide explains how to use each command to drive the agentic loop.
+SnowNinja is controlled via interactive slash commands. This guide details every command, its parameters, and the underlying logic it triggers in the agentic harness.
 
 ---
 
-## 🛠 Core Workflow Commands
+## 📐 Planning & Design
 
 ### `/plan <goal>`
-Switch to **Planner Mode**. Use this for high-level architectural design or when you need the agent to reason about your Snowflake environment.
-- **Output**: Generates a technical plan and a `## Task List`.
-
-### `/implement [instruction]`
-Switch to **Implementer Mode**. This lane picks up the active Task List and begins autonomous execution.
-- **Example**: `/implement start` or `/implement build the staging tables`.
+Switch to **Planner Mode**. This sets the model role to `planner`, which uses high-reasoning models (Llama 3.1 405B) to architect a solution.
+- **Under the Hood**: Injects a strict system prompt that forbids code generation and mandates a `## Task List` at the end of the response.
+- **Example**: `/plan Design a medallion pipeline for clickstream data in the analytics_db catalog.`
 
 ### `/interview <goal>`
-Start a guided requirements gathering session. The agent will ask you 5 focused questions to shape the project requirements before generating a plan.
-- **Exit**: Type `/go` at any time to skip the remaining questions and finalize the requirements.
+Activate the **Requirements Analyst**. This starts a guided Q&A session to gather project specifications before a single line of code is written.
+- **Under the Hood**: Uses a separate LLM conversation history to avoid polluting the main agent context. Closes after 5 questions or upon `/go`.
+- **Output**: Generates a combined `## Requirements` and `## Task List` section.
+
+### `/go`
+Force the current interview to finalize.
+- **Under the Hood**: Triggers the `force_finalize=True` flag in the `interview_chat` loop, prompting the model to summarize everything gathered so far into a project plan.
 
 ---
 
-## 🔍 Inspection & Governance
+## ⚙️ Implementation & Execution
+
+### `/implement [instruction]`
+Switch to **Implementer Mode**. This uses coding-optimized models (Qwen 2.5 Coder) to execute the active task list.
+- **Under the Hood**: Injects the `session.task_list` and `session.requirements` directly into the system prompt. The model will automatically pick up where it left off.
+- **Example**: `/implement start` or `/implement build the staging tables`.
 
 ### `/explore`
-Switch to a read-only exploration mode. The Implementer model will focus on running `SELECT` queries and describing objects to help you understand your data.
-
-### `/govern`
-Switch to the Governance lane. Optimized for managing Roles, Grants, and masking policies.
-
-### `/connection`
-Run an immediate diagnostic on your Snowflake connection. Shows your current user, role, warehouse, and database context.
+A semantic alias for the Implementer lane, optimized for read-only workspace inspection.
+- **Under the Hood**: Sets the mode to `explore` and model role to `implementer`. This allows the model to run `execute_sql` for data analysis without feeling forced to generate an architectural plan.
 
 ---
 
-## 🎛 System Management
+## 🎛 System & Configuration
 
 ### `/models`
-Display the NIM Model Registry. Shows all available Planner and Implementer models and their current fallback status.
+Display the **NIM Model Registry**.
+- **Planner Lane**: Shows the primary and fallback reasoning models.
+- **Implementer Lane**: Shows the primary and fallback coding models.
 
-### `/model <lane> <id>`
+### `/model <lane> <model_id>`
 Hot-swap a model for the current session.
 - **Example**: `/model planner meta/llama-3.1-70b-instruct`
+- **Persistence**: Saves the preference to `~/.snowninja/config.yaml` and resets the `NimClient`.
 
 ### `/tasks`
-Display the current active Task List and gathered requirements.
-- **Wipe**: `/tasks clear` to reset the project state.
-
-### `/new`
-A full "hard reset". Clears conversation histories, the task list, requirements, and any active interview state.
+Display the current session's active plan.
+- **Subcommand**: `/tasks clear` — Wipes the task list and requirements from the session.
 
 ---
 
 ## 🏗 Project Scaffolding
 
 ### `/scaffold <template>`
-Instantly generate a project structure on your local machine.
-- **Available Templates**:
-    - `pipeline-project`: A dbt/SQL-based Medallion architecture structure.
-    - `app-project`: A Streamlit in Snowflake (SiS) template.
-    - `snowpark-project`: A Python-native Snowpark development environment.
+Generate local project files from pre-defined Snowflake templates.
+- **Templates**:
+    - `medallion`: Bronze/Silver/Gold pipeline structure.
+    - `streamlit`: Streamlit in Snowflake (SiS) boilerplate.
+    - `snowpark`: Python-native Snowpark environment with `uv` support.
+
+---
+
+## 🥷 Utility Commands
+
+- `/help`: Show all available commands.
+- `/new`: Hard reset. Clears history, tasks, requirements, and interview state.
+- `/doctor`: Run connection diagnostics (Snowflake auth + NIM API).
+- `/clear`: Clear conversation history only (keeps the task list).
+- `/quit`: Exit the shell.
+
+---
+
+*Part of [SnowNinja](../README.md) — The Principal Architect's Shell.* 🥷❄️
