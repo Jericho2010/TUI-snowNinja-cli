@@ -283,18 +283,23 @@ class SnowNinjaShell:
             console.print(f"[red]Unknown mode:[/] {mode}  — choose from: {', '.join(MODES.keys())}")
 
     def _cmd_models(self, _: list[str]) -> None:
-        planner_models = [
-            ("meta/llama-4-maverick-17b-128e-instruct", "★ DEFAULT", "Llama 4 MoE · Maverick · Ultimate Reasoning"),
-            ("mistralai/mistral-large-3-675b-instruct-2512", "FALLBACK", "675B Flagship · Deep Logic · Tool Calling ✓"),
-            ("moonshotai/kimi-k2.6", "★ PREMIUM", "Kimi 2.6 · 11T MoE · Deep Context Reasoning"),
-            ("deepseek-ai/deepseek-v4-flash", "FLASH", "DeepSeek V4 Flash · Sub-Second Planning"),
-            ("google/gemma-4-31b-it", "FAST", "Gemma 4 · Ultra-Fast Planning"),
+        planner_tree = [
+            ("meta/llama-4-maverick-17b-128e-instruct", "DEFAULT", "Llama 4 MoE · Maverick · Workhorse"),
+            ("mistralai/mistral-large-3-675b-instruct-2512", "FALLBACK", "Mistral Large 3 · 675B · Frontier Logic"),
+            ("nvidia/nemotron-4-340b-instruct", "FALLBACK", "Nemotron 4 · 340B · Nvidia Standard"),
+            ("google/gemma-4-31b-it", "FALLBACK", "Gemma 4 · 31B · Agile Planner"),
         ]
-        implementer_models = [
-            ("qwen/qwen3-coder-480b-a35b-instruct", "★ DEFAULT", "Qwen 3 480B · Best Agentic Coder on NIM"),
-            ("deepseek-ai/deepseek-v4-pro", "STABLE", "DeepSeek V4 · High Fidelity Logic"),
-            ("deepseek-ai/deepseek-v4-flash", "FLASH", "DeepSeek V4 Flash · Lightning SQL Execution"),
-            ("z-ai/glm-5.1", "NEW", "GLM 5.1 Flagship · Agentic Implementation"),
+        implementer_tree = [
+            ("qwen/qwen3-coder-480b-a35b-instruct", "DEFAULT", "Qwen 3 Coder · 480B · SOTA Coding"),
+            ("z-ai/glm-5.1", "FOLLOW", "GLM 5.1 · Next-Gen Agentic"),
+            ("mistralai/devstral-2-123b-instruct-2512", "FOLLOW", "Devstral 2 · High Fidelity Logic"),
+            ("deepseek-ai/deepseek-v4-pro", "STABLE", "DeepSeek V4 Pro · Reliable Heavyweight"),
+        ]
+        specialized_tiers = [
+            ("moonshotai/kimi-k2.6", "PREMIUM", "Kimi 2.6 · 11T MoE · Benchmark King"),
+            ("moonshotai/kimi-k2-thinking", "THINKING", "Kimi K2 · Deep Chain-of-Thought"),
+            ("deepseek-ai/deepseek-v4-flash", "FLASH", "DeepSeek V4 Flash · Sub-Second Latency"),
+            ("mistralai/mistral-small-4-119b-2603", "STABLE", "Mistral Small v4 · 119B · Versatile Anchor"),
         ]
 
         def fmt_row(model_id: str, tag: str, desc: str, color: str) -> str:
