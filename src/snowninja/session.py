@@ -17,6 +17,9 @@ class SessionManager:
         # Interview mode state
         self.interview_mode: bool = False
         self.interview_turn_count: int = 0   # tracks Q&A rounds for auto-finalization
+        
+        # Runtime limits
+        self.max_iterations: int = 20
 
         # Determine if we have the minimum required config
         self.is_configured = bool(
