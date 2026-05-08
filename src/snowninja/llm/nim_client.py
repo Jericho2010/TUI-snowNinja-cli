@@ -12,6 +12,10 @@ from snowninja.llm.models import NimModel, ModelRole
 from snowninja.actions.tools_core import tools
 from snowninja.skills.router import skill_router
 
+import tenacity
+import random
+import time
+
 logger = logging.getLogger(__name__)
 
 # Models that don't support tool calling endpoints, meaning we need to use a standard chat format.
@@ -212,6 +216,17 @@ class NimClient:
             return session.config.planner_model
         return session.config.implementer_model
 
+    @tenacity.retry(
+        wait=tenacity.wait_exponential(multiplier=1, min=2, max=10),
+        stop=tenacity.stop_after_attempt(5),
+        retry=tenacity.retry_if_exception_type((Exception)), # We'll filter inside _should_fallback if needed
+        reraise=True,
+        before_sleep=lambda retry_state: logger.warning(f"Rate limit or API error hit. Retrying in {retry_state.next_action.sleep}s...")
+    )
+    async def _chat_with_retry(self, **kwargs):
+        client = self._get_client()
+        return await client.chat.completions.create(**kwargs)
+
     def reset_history(self, role: Optional[ModelRole] = None) -> None:
         if role:
             self._histories[role] = []
@@ -296,7 +311,7 @@ class NimClient:
         for model in chain:
             try:
                 # Fast probe
-                await client.chat.completions.create(
+                await self._chat_with_retry(
                     model=model,
                     messages=[{"role": "user", "content": "ping"}],
                     max_tokens=1,
@@ -364,7 +379,7 @@ class NimClient:
                     kwargs["tool_choice"] = "auto"
                     kwargs["parallel_tool_calls"] = False
 
-                response = await client.chat.completions.create(**kwargs)
+                response = await self._chat_with_retry(**kwargs)
                 response_msg = response.choices[0].message
                 
             except Exception as e:
@@ -374,7 +389,7 @@ class NimClient:
                     yield "model_switch", model
                     try:
                         kwargs["model"] = model
-                        response = await client.chat.completions.create(**kwargs)
+                        response = await self._chat_with_retry(**kwargs)
                         response_msg = response.choices[0].message
                     except Exception as e2:
                         yield "error", f"Fallback model also failed: {e2}"
@@ -399,6 +414,9 @@ class NimClient:
                     tool_result = await self._execute_tool(tool_name, tool_args)
                     yield "tool_result", tool_result
                     
+                    # Randomized jitter to prevent burst rate limit (429)
+                    await asyncio.sleep(random.uniform(0.5, 1.5))
+                    
                     self._histories[role].append({
                         "tool_call_id": tool_call.id,
                         "role": "tool",
@@ -415,6 +433,9 @@ class NimClient:
                         yield "tool_call", (tool_name, tool_args)
                         tool_result = await self._execute_tool(tool_name, tool_args)
                         yield "tool_result", tool_result
+
+                        # Jitter for sniffed calls too
+                        await asyncio.sleep(random.uniform(0.5, 1.5))
                         
                         # Add a fake tool message to history to keep the loop valid
                         self._histories[role].append({
@@ -464,7 +485,7 @@ class NimClient:
         messages = self._interview_history
         
         try:
-            response = await client.chat.completions.create(
+            response = await self._chat_with_retry(
                 model=model,
                 messages=messages,
                 temperature=0.7
