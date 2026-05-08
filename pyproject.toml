@@ -1,12 +1,19 @@
 [project]
 name = "snowninja"
-version = "0.2.5"
+version = "0.2.6"
 description = "SnowNinja — Personal Snowflake Agent Harness"
 requires-python = ">=3.10"
 dependencies = [
-    "typer>=0.12", "rich>=13.7", "prompt-toolkit>=3.0.43",
-    "pydantic>=2.6", "pyyaml>=6.0", "openai>=1.10",
-    "snowflake-connector-python>=3.0", "snowflake>=1.0", "toml>=0.10",
+    "typer>=0.12",
+    "rich>=13.7",
+    "prompt-toolkit>=3.0.43",
+    "pydantic>=2.6",
+    "pyyaml>=6.0",
+    "openai>=1.10",
+    "snowflake-connector-python>=3.0",
+    "snowflake>=1.0",
+    "toml>=0.10",
+    "tenacity>=9.1.4",
 ]
 
 [project.optional-dependencies]
