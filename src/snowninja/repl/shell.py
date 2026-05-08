@@ -455,6 +455,13 @@ class SnowNinjaShell:
 
                 session.requirements = req_text
                 session.task_list = task_text
+                
+                # Dynamic iteration budget extraction
+                iter_match = re.search(r"## Estimated Iterations\s*([\d]+)", response_text, re.IGNORECASE)
+                if iter_match:
+                    session.max_iterations = int(iter_match.group(1))
+                else:
+                    session.max_iterations = 20 # Reset to default if not specified
 
                 console.print(Panel(
                     Markdown(response_text),
@@ -657,9 +664,13 @@ class SnowNinjaShell:
             last_tool: str = "tool"
 
             spinner = Spinner("dots", text=f"  Calling {model_short}…", style=f"bold {SF_BLUE}")
-
+            iteration_count = 0
             with Live(spinner, console=console, refresh_per_second=12, transient=True):
                 async for event_type, data in client.agent_chat(user_input, role=role):
+                    if event_type == "tool_call" or event_type == "text":
+                        iteration_count += 1
+                        
+                    budget_str = f"[[dim]{iteration_count}[/]/[bold]{session.max_iterations}[/]]"
 
                     if event_type == "tool_call":
                         fn_name, fn_args = data
@@ -667,7 +678,7 @@ class SnowNinjaShell:
                         args_str = ", ".join(
                             f'{k}="{v}"' for k, v in fn_args.items()
                         ) if fn_args else ""
-                        spinner.text = f"  🔧 {fn_name}({args_str})…"
+                        spinner.text = f"  {budget_str} 🔧 {fn_name}({args_str})…"
 
                     elif event_type == "tool_result":
                         try:
@@ -685,16 +696,16 @@ class SnowNinjaShell:
                             f"[dim {SF_TEXT}]→ {summary}[/]",
                             highlight=False,
                         )
-                        spinner.text = f"  Calling {model_short}…"
+                        spinner.text = f"  {budget_str} Calling {model_short}…"
 
                     elif event_type == "skill_match":
                         skill_names = ", ".join(data)
-                        spinner.text = f"  📚 Skills: {skill_names} | Calling {model_short}…"
+                        spinner.text = f"  {budget_str} 📚 Skills: {skill_names} | Calling {model_short}…"
 
                     elif event_type == "model_switch":
                         new_short = data.split("/")[-1]
                         model_short = new_short
-                        spinner.text = f"  ⚡ Switching to {new_short}…"
+                        spinner.text = f"  {budget_str} ⚡ Switching to {new_short}…"
                         console.print(
                             f"  [bold {SF_YELLOW}]⚡ Fallback:[/] [dim]overloaded → switching to[/] "
                             f"[bold {SF_BLUE_L}]{data}[/]"
@@ -702,7 +713,7 @@ class SnowNinjaShell:
 
                     elif event_type == "text":
                         response_text = data
-                        spinner.text = "  Composing response…"
+                        spinner.text = f"  {budget_str} Composing response…"
 
                     elif event_type == "error":
                         errors.append(data)

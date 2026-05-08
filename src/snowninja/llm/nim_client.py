@@ -78,12 +78,12 @@ Your job is to conduct a requirements-gathering interview with the user.
 
 When the user says "/go" or you have enough info, output the final result using EXACTLY this format:
 
-## Requirements
-(bullet points of the gathered requirements)
-
 ## Task List
 - [ ] Step 1
 - [ ] Step 2
+
+## Estimated Iterations
+(A number representing the total expected model calls for the implementation phase, e.g., 15)
 """
 
 
@@ -331,9 +331,12 @@ class NimClient:
         # Fall back on capacity, 404s, or specific NIM gateway errors
         return any(flag in err_str for flag in ["404", "capacity", "rate limit", "503", "timeout"])
 
-    async def agent_chat(self, prompt: str, role: ModelRole = ModelRole.PLANNER) -> AsyncGenerator[Tuple[str, Any], None]:
+    async def agent_chat(self, prompt: str, role: ModelRole = ModelRole.PLANNER, max_iterations: Optional[int] = None) -> AsyncGenerator[Tuple[str, Any], None]:
         client = self._get_client()
         requested_model = self._get_model_for_role(role)
+        
+        # Use session limit if no override passed
+        limit = max_iterations or session.max_iterations
         
         # 1. Resolve alive model
         model = await self._resolve_model(requested_model, role)
@@ -363,8 +366,8 @@ class NimClient:
         # Add user prompt to persistent history
         self._histories[role].append({"role": "user", "content": prompt})
 
-        # Max 20 tool-calling iterations to prevent infinite loops
-        for iteration in range(20):
+        # Max tool-calling iterations (Dynamic budget)
+        for iteration in range(limit):
             # Rebuild messages for this iteration: ephemeral sys + persistent history
             messages = [ephemeral_sys] + self._histories[role]
             
@@ -451,7 +454,7 @@ class NimClient:
                 yield "text", final_text
                 return
                 
-        yield "error", "Exceeded maximum tool iterations (20)."
+        yield "error", f"Exceeded maximum tool iterations ({limit})."
 
     async def interview_chat(self, user_input: str, force_finalize: bool = False) -> AsyncGenerator[Tuple[str, Any], None]:
         client = self._get_client()
