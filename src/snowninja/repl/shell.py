@@ -110,6 +110,18 @@ MODES = {
 }
 
 
+def _status_text(iteration_count: int, max_iterations: int, message: str) -> Text:
+    """Build spinner text without relying on inline markup parsing."""
+    status = Text("  ")
+    status.append("[", style="dim")
+    status.append(str(iteration_count), style="dim")
+    status.append("/")
+    status.append(str(max_iterations), style="bold")
+    status.append("]", style="dim")
+    status.append(f" {message}")
+    return status
+
+
 class SlashCompleter(Completer):
     """Inline dropdown completer triggered on '/'."""
 
@@ -855,9 +867,10 @@ class SnowNinjaShell:
                     if event_type == "tool_call" or event_type == "text":
                         iteration_count += 1
 
-                    budget_str = (
-                        f"[[dim]{iteration_count}[/]/[bold]{session.max_iterations}[/]]"
-                    )
+                    def status_text(message: str) -> Text:
+                        return _status_text(
+                            iteration_count, session.max_iterations, message
+                        )
 
                     if event_type == "tool_call":
                         fn_name, fn_args = data
@@ -867,7 +880,7 @@ class SnowNinjaShell:
                             if fn_args
                             else ""
                         )
-                        spinner.text = f"  {budget_str} 🔧 {fn_name}({args_str})…"
+                        spinner.text = status_text(f"🔧 {fn_name}({args_str})…")
 
                     elif event_type == "tool_result":
                         try:
@@ -885,16 +898,18 @@ class SnowNinjaShell:
                             f"[dim {SF_TEXT}]→ {summary}[/]",
                             highlight=False,
                         )
-                        spinner.text = f"  {budget_str} Calling {model_short}…"
+                        spinner.text = status_text(f"Calling {model_short}…")
 
                     elif event_type == "skill_match":
                         skill_names = ", ".join(data)
-                        spinner.text = f"  {budget_str} 📚 Skills: {skill_names} | Calling {model_short}…"
+                        spinner.text = status_text(
+                            f"📚 Skills: {skill_names} | Calling {model_short}…"
+                        )
 
                     elif event_type == "model_switch":
                         new_short = data.split("/")[-1]
                         model_short = new_short
-                        spinner.text = f"  {budget_str} ⚡ Switching to {new_short}…"
+                        spinner.text = status_text(f"⚡ Switching to {new_short}…")
                         console.print(
                             f"  [bold {SF_YELLOW}]⚡ Fallback:[/] [dim]switching to[/] "
                             f"[bold {SF_BLUE_L}]{data}[/]"
@@ -902,7 +917,7 @@ class SnowNinjaShell:
 
                     elif event_type == "text":
                         response_text = data
-                        spinner.text = f"  {budget_str} Composing response…"
+                        spinner.text = status_text("Composing response…")
 
                     elif event_type == "error":
                         errors.append(data)

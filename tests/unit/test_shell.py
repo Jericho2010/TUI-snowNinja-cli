@@ -1,4 +1,6 @@
 from prompt_toolkit.formatted_text import to_formatted_text
+from rich.spinner import Spinner
+from rich.text import Text
 from snowninja.repl.shell import (
     SLASH_COMMANDS,
     MODES,
@@ -7,6 +9,7 @@ from snowninja.repl.shell import (
     SF_BLUE,
     SF_NAVY,
     SF_YELLOW,
+    _status_text,
 )
 from snowninja.llm.models import ModelRole
 from snowninja.session import session
@@ -67,3 +70,20 @@ def test_bottom_toolbar_shows_active_lane_model():
         assert "runtime-model" in toolbar_text
     finally:
         session.active_implementer_model = original_model
+
+
+def test_status_text_builds_rich_text_without_markup_tags():
+    status = _status_text(1, 20, "Calling qwen…")
+
+    assert isinstance(status, Text)
+    assert status.plain == "  [1/20] Calling qwen…"
+    assert "[dim]" not in status.plain
+    assert "[bold]" not in status.plain
+
+
+def test_spinner_updates_accept_status_text_objects():
+    spinner = Spinner("dots", text="Calling qwen…")
+    spinner.text = _status_text(1, 20, "🔧 search_objects()…")
+
+    assert isinstance(spinner.text, Text)
+    assert spinner.text.plain == "  [1/20] 🔧 search_objects()…"
