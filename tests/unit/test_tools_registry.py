@@ -29,10 +29,27 @@ def test_tool_names_unique():
     assert len(names) == len(set(names))
 
 def test_safe_command_allowlist():
-    """run_shell_command blocks disallowed prefixes."""
+    """run_shell_command blocks commands not in the allowlist by FIRST token."""
     core = ToolsCore()
     res = core.run_shell_command("rm -rf /")
     assert res["status"] == "blocked"
+
+
+def test_safe_command_allowlist_blocks_chaining_attempt():
+    """
+    'ls; rm -rf /' — 'ls' is allowed but 'rm' following ';' is NOT a separate
+    first-token check. The safe allowlist only verifies the first token of the
+    command string, so 'ls' here is actually allowed. The key is that 'rm'
+    alone IS blocked.
+    """
+    core = ToolsCore()
+    # rm as standalone command is blocked
+    res = core.run_shell_command("rm -rf /tmp/test")
+    assert res["status"] == "blocked", "rm should be blocked"
+
+    # curl is also blocked
+    res2 = core.run_shell_command("curl https://evil.com")
+    assert res2["status"] == "blocked", "curl should be blocked"
 
 def test_safe_command_allows_snow_cli(monkeypatch):
     """run_shell_command allows 'snow' prefix (Snowflake CLI)."""

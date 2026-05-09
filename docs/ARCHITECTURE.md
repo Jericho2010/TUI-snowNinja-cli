@@ -69,7 +69,7 @@ flowchart TD
 
     subgraph IMPL ["⚙️ Implementer Lane  /implement"]
         IM["qwen-2.5-coder-32b\n★ DEFAULT · best coder"]:::model
-        IM2["deepseek-v3 / mistral-large\nalternatives"]:::model
+        IM2["devstral-2 / deepseek-v4-pro\nalternatives"]:::model
     end
 
     subgraph SHARED ["🔗 Shared Session State"]
@@ -97,8 +97,8 @@ flowchart TD
 ```
 
 SnowNinja separates **Architectural Reasoning** from **Technical Execution**:
-- **Planner lane**: Uses the highest-reasoning models (`llama-3.1-405b`) to decompose complex goals into a structured `## Task List`.
-- **Implementer lane**: Uses coding-specialized models (`qwen-2.5-coder`) to execute those tasks.
+- **Planner lane**: Uses the highest-reasoning models (`llama-4-maverick`) to decompose complex goals into a structured `## Task List`.
+- **Implementer lane**: Uses coding-specialized models (`qwen3-coder-480b`) to execute those tasks.
 - **Shared Context**: The `session.task_list` is the source of truth that connects the two models.
 
 ---

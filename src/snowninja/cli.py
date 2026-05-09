@@ -86,11 +86,11 @@ def setup():
     console.print("\n[bold cyan]Agent Model Selection[/]")
     planner_model = Prompt.ask(
         "  [bold yellow]Planner Model[/]",
-        default="meta/llama-3.1-405b-instruct"
+        default="meta/llama-4-maverick-17b-128e-instruct"
     )
     implementer_model = Prompt.ask(
         "  [bold yellow]Implementer Model[/]",
-        default="qwen/qwen2.5-coder-32b-instruct"
+        default="qwen/qwen3-coder-480b-a35b-instruct"
     )
 
     config = SnowNinjaConfig(

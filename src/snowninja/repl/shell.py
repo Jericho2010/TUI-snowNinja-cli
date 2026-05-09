@@ -32,7 +32,7 @@ from snowninja.core.config import save_config
 
 console = Console()
 
-VERSION = "0.2.3"
+VERSION = "0.2.7"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Snowflake Brand Palette
@@ -457,11 +457,17 @@ class SnowNinjaShell:
                 session.task_list = task_text
                 
                 # Dynamic iteration budget extraction
-                iter_match = re.search(r"## Estimated Iterations\s*([\d]+)", response_text, re.IGNORECASE)
+                # Permissive regex: handles "## Estimated Iterations\n15",
+                # "## Estimated Iterations: 15", "## Estimated Iterations\n**15**", etc.
+                iter_match = re.search(
+                    r"##\s*Estimated Iterations[^\d]*([\d]+)",
+                    response_text,
+                    re.IGNORECASE,
+                )
                 if iter_match:
                     session.max_iterations = int(iter_match.group(1))
                 else:
-                    session.max_iterations = 20 # Reset to default if not specified
+                    session.max_iterations = 20  # Reset to default if not specified
 
                 console.print(Panel(
                     Markdown(response_text),

@@ -1,6 +1,7 @@
 import json
 import logging
 import asyncio
+import re
 import traceback
 from typing import AsyncGenerator, Dict, Any, List, Optional, Tuple
 
@@ -14,7 +15,6 @@ from snowninja.skills.router import skill_router
 
 import tenacity
 import random
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +23,6 @@ NO_TOOLS_MODELS = [
     "nvidia/llama-3.1-nemotron-ultra-253b-v1",
     "qwen/qwen2.5-coder-32b-instruct"
 ]
-
-import re
 
 # --- SYSTEM PROMPTS ---
 
@@ -196,7 +194,8 @@ TOOL_DISPATCH = {
 
 class NimClient:
     def __init__(self):
-        self._get_client()
+        # Cached AsyncOpenAI client — re-created only when config changes
+        self._client: Optional[AsyncOpenAI] = None
         # Persistent history separated by role lane
         self._histories: Dict[ModelRole, List[ChatCompletionMessageParam]] = {
             ModelRole.PLANNER: [],
@@ -204,12 +203,19 @@ class NimClient:
         }
         self._interview_history: List[ChatCompletionMessageParam] = []
 
-    def _get_client(self):
-        pat = session.config.nvidia_pat or "dummy_key_to_prevent_crash"
-        return AsyncOpenAI(
-            base_url="https://integrate.api.nvidia.com/v1",
-            api_key=pat
-        )
+    def _get_client(self) -> AsyncOpenAI:
+        """Return a cached AsyncOpenAI instance, creating it on first call."""
+        if self._client is None:
+            pat = session.config.nvidia_pat or "dummy_key_to_prevent_crash"
+            self._client = AsyncOpenAI(
+                base_url="https://integrate.api.nvidia.com/v1",
+                api_key=pat
+            )
+        return self._client
+
+    def invalidate_client(self) -> None:
+        """Force the client to be re-created (e.g., after a config change)."""
+        self._client = None
 
     def _get_model_for_role(self, role: ModelRole) -> str:
         if role == ModelRole.PLANNER:
@@ -384,18 +390,26 @@ class NimClient:
 
                 response = await self._chat_with_retry(**kwargs)
                 response_msg = response.choices[0].message
-                
+
             except Exception as e:
                 if self._should_fallback(e):
-                    # Try hard fallback to Mistral Large 3
-                    model = NimModel.MISTRAL_LARGE_3.value
-                    yield "model_switch", model
-                    try:
-                        kwargs["model"] = model
-                        response = await self._chat_with_retry(**kwargs)
-                        response_msg = response.choices[0].message
-                    except Exception as e2:
-                        yield "error", f"Fallback model also failed: {e2}"
+                    # Walk the lane fallback chain (skip the model that just failed)
+                    fallback_succeeded = False
+                    for fallback_model in self.get_fallback_chain(role):
+                        if fallback_model == model:
+                            continue  # already failed
+                        model = fallback_model
+                        yield "model_switch", model
+                        try:
+                            kwargs["model"] = model
+                            response = await self._chat_with_retry(**kwargs)
+                            response_msg = response.choices[0].message
+                            fallback_succeeded = True
+                            break
+                        except Exception:
+                            continue
+                    if not fallback_succeeded:
+                        yield "error", "All fallback models in lane exhausted."
                         return
                 else:
                     yield "error", f"API Error: {e}"
