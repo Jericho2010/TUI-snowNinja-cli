@@ -1,6 +1,3 @@
-import pytest
-import os
-from pathlib import Path
 from snowninja.scaffold.engine import ScaffoldEngine
 
 def test_scaffold_pipeline(tmp_path, monkeypatch):

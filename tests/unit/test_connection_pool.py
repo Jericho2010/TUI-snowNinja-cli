@@ -4,7 +4,6 @@ tests/unit/test_connection_pool.py
 Tests for the ToolsCore connection caching behaviour.
 No real Snowflake connection required — uses mocks.
 """
-import pytest
 from unittest import mock
 from snowninja.actions.tools_core import ToolsCore
 
@@ -64,7 +63,6 @@ def test_cursor_closed_after_query(mock_get_conn):
     conn = _make_mock_conn(is_closed=False)
     mock_get_conn.return_value = conn
 
-    from snowninja.governance.policies import check_query_safety
     with mock.patch("snowninja.governance.policies.check_query_safety", return_value=True):
         core = ToolsCore(profile=None)
         core._execute_query("SELECT 1")

@@ -28,7 +28,7 @@ def test_connection():
     cs = ctx.cursor()
     cs.execute("SELECT current_user(), current_role(), current_warehouse(), current_version()")
     row = cs.fetchone()
-    print(f"\n✅ Connected!")
+    print("\n✅ Connected!")
     print(f"   User      : {row[0]}")
     print(f"   Role      : {row[1]}")
     print(f"   Warehouse : {row[2]}")

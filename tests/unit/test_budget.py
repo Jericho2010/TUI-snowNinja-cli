@@ -1,6 +1,6 @@
 import pytest
 from snowninja.session import session
-from snowninja.llm.nim_client import NimClient, ModelRole
+from snowninja.llm.nim_client import NimClient
 
 def test_session_budget_default():
     """Session has a default max_iterations of 20."""

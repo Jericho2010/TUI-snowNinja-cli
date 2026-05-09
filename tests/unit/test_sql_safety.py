@@ -8,7 +8,6 @@ Tests for:
 - show_grants_on object-type allowlist
 - run_shell_command actual-token allowlist (not startswith)
 """
-import pytest
 from unittest import mock
 from snowninja.actions.tools_core import ToolsCore, _quote_id
 
@@ -64,7 +63,7 @@ def test_create_warehouse_sql_contains_tag(mock_get_conn):
     from snowninja.governance.policies import check_query_safety
 
     core = ToolsCore()
-    with mock.patch("snowninja.governance.policies.check_query_safety", wraps=check_query_safety) as mock_policy:
+    with mock.patch("snowninja.governance.policies.check_query_safety", wraps=check_query_safety):
         try:
             core.create_warehouse("TEST_WH", size="X-SMALL", tag="snowninja")
         except Exception:
@@ -105,7 +104,7 @@ def test_drop_object_allows_known_type(monkeypatch):
     core = ToolsCore()
     executed = []
     monkeypatch.setattr(core, "_execute_query", lambda sql: [{"status": "success"}] if executed.append(sql) is None else None)
-    res = core.drop_object("TABLE", "MY_TABLE")
+    core.drop_object("TABLE", "MY_TABLE")
     assert executed, "No SQL was executed"
     assert "DROP TABLE" in executed[0].upper()
 

@@ -1,8 +1,6 @@
 from rich.console import Console
 from rich.panel import Panel
-from rich.text import Text
 from rich.markdown import Markdown
-from typing import Optional
 
 # Snowflake Brand Palette
 SF_BLUE = "#29B5E8"

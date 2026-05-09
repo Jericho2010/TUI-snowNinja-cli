@@ -1,4 +1,3 @@
-import asyncio
 from snowninja.repl.shell import SnowNinjaShell
 
 def test():

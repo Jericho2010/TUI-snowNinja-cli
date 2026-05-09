@@ -2,6 +2,7 @@ import json
 import logging
 import asyncio
 import re
+import time
 import traceback
 from typing import AsyncGenerator, Dict, Any, List, Optional, Tuple
 
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Models that don't support tool calling endpoints, meaning we need to use a standard chat format.
 NO_TOOLS_MODELS = [
     "nvidia/llama-3.1-nemotron-ultra-253b-v1",
-    "qwen/qwen2.5-coder-32b-instruct"
+    "qwen/qwen2.5-coder-32b-instruct",
 ]
 
 # --- SYSTEM PROMPTS ---
@@ -48,7 +49,6 @@ When you are done planning, your FINAL message MUST end with this exact markdown
 - [ ] Task 1 description
 - [ ] Task 2 description
 """,
-
     ModelRole.IMPLEMENTER: """You are the SnowNinja Implementer — an expert Snowflake Data Engineer and Agent.
 Your job is to execute the Task List exactly as planned.
 
@@ -62,7 +62,7 @@ Your job is to execute the Task List exactly as planned.
 3. Validate complex SQL before executing it (`validate_sql`).
 4. Read the injected Skill Guidance (if any). It contains code patterns you must use.
 5. Do not stop until you hit an unrecoverable error or all tasks are complete.
-"""
+""",
 }
 
 INTERVIEW_SYSTEM_PROMPT = """You are a Principal Snowflake Business Analyst.
@@ -89,62 +89,463 @@ When the user says "/go" or you have enough info, output the final result using 
 
 SNOWFLAKE_TOOLS = [
     # Identity
-    {"type": "function", "function": {"name": "get_current_user", "description": "Get current user, role, and warehouse", "parameters": {"type": "object", "properties": {}}}},
-    {"type": "function", "function": {"name": "get_account_info", "description": "Get account name and region", "parameters": {"type": "object", "properties": {}}}},
-    {"type": "function", "function": {"name": "list_connection_profiles", "description": "List configured Snowflake profiles", "parameters": {"type": "object", "properties": {}}}},
-    
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_user",
+            "description": "Get current user, role, and warehouse",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_account_info",
+            "description": "Get account name and region",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_connection_profiles",
+            "description": "List configured Snowflake profiles",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
     # Metadata
-    {"type": "function", "function": {"name": "list_databases", "description": "List all databases", "parameters": {"type": "object", "properties": {}}}},
-    {"type": "function", "function": {"name": "list_schemas", "description": "List schemas in a database", "parameters": {"type": "object", "properties": {"database": {"type": "string"}}, "required": []}}},
-    {"type": "function", "function": {"name": "list_tables", "description": "List tables in a schema", "parameters": {"type": "object", "properties": {"schema": {"type": "string"}}, "required": []}}},
-    {"type": "function", "function": {"name": "describe_table", "description": "Get columns for a table", "parameters": {"type": "object", "properties": {"table_name": {"type": "string"}}, "required": ["table_name"]}}},
-    {"type": "function", "function": {"name": "search_objects", "description": "Search objects by name", "parameters": {"type": "object", "properties": {"keyword": {"type": "string"}}, "required": ["keyword"]}}},
-    {"type": "function", "function": {"name": "get_table_ddl", "description": "Get CREATE TABLE DDL", "parameters": {"type": "object", "properties": {"table_name": {"type": "string"}}, "required": ["table_name"]}}},
-    
+    {
+        "type": "function",
+        "function": {
+            "name": "list_databases",
+            "description": "List all databases",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_schemas",
+            "description": "List schemas in a database",
+            "parameters": {
+                "type": "object",
+                "properties": {"database": {"type": "string"}},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_tables",
+            "description": "List tables in a schema",
+            "parameters": {
+                "type": "object",
+                "properties": {"schema": {"type": "string"}},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "describe_table",
+            "description": "Get columns for a table",
+            "parameters": {
+                "type": "object",
+                "properties": {"table_name": {"type": "string"}},
+                "required": ["table_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_objects",
+            "description": "Search objects by name",
+            "parameters": {
+                "type": "object",
+                "properties": {"keyword": {"type": "string"}},
+                "required": ["keyword"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_table_ddl",
+            "description": "Get CREATE TABLE DDL",
+            "parameters": {
+                "type": "object",
+                "properties": {"table_name": {"type": "string"}},
+                "required": ["table_name"],
+            },
+        },
+    },
     # SQL
-    {"type": "function", "function": {"name": "execute_sql", "description": "Execute a raw SQL query", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
-    {"type": "function", "function": {"name": "validate_sql", "description": "Validate SQL syntax using EXPLAIN", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
-    {"type": "function", "function": {"name": "get_query_history", "description": "Get recent queries", "parameters": {"type": "object", "properties": {"limit": {"type": "integer"}}, "required": []}}},
-    
+    {
+        "type": "function",
+        "function": {
+            "name": "execute_sql",
+            "description": "Execute a raw SQL query",
+            "parameters": {
+                "type": "object",
+                "properties": {"query": {"type": "string"}},
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "validate_sql",
+            "description": "Validate SQL syntax using EXPLAIN",
+            "parameters": {
+                "type": "object",
+                "properties": {"query": {"type": "string"}},
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_query_history",
+            "description": "Get recent queries",
+            "parameters": {
+                "type": "object",
+                "properties": {"limit": {"type": "integer"}},
+                "required": [],
+            },
+        },
+    },
     # Warehouse
-    {"type": "function", "function": {"name": "list_warehouses", "description": "List all warehouses", "parameters": {"type": "object", "properties": {}}}},
-    {"type": "function", "function": {"name": "create_warehouse", "description": "Create a new warehouse", "parameters": {"type": "object", "properties": {"name": {"type": "string"}, "size": {"type": "string", "enum": ["X-SMALL", "SMALL", "MEDIUM", "LARGE", "X-LARGE"]}}, "required": ["name"]}}},
-    {"type": "function", "function": {"name": "resize_warehouse", "description": "Resize an existing warehouse", "parameters": {"type": "object", "properties": {"name": {"type": "string"}, "size": {"type": "string"}}, "required": ["name", "size"]}}},
-    {"type": "function", "function": {"name": "suspend_warehouse", "description": "Suspend a warehouse", "parameters": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}}},
-    
+    {
+        "type": "function",
+        "function": {
+            "name": "list_warehouses",
+            "description": "List all warehouses",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_warehouse",
+            "description": "Create a new warehouse",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "size": {
+                        "type": "string",
+                        "enum": ["X-SMALL", "SMALL", "MEDIUM", "LARGE", "X-LARGE"],
+                    },
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "resize_warehouse",
+            "description": "Resize an existing warehouse",
+            "parameters": {
+                "type": "object",
+                "properties": {"name": {"type": "string"}, "size": {"type": "string"}},
+                "required": ["name", "size"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "suspend_warehouse",
+            "description": "Suspend a warehouse",
+            "parameters": {
+                "type": "object",
+                "properties": {"name": {"type": "string"}},
+                "required": ["name"],
+            },
+        },
+    },
     # Data Eng
-    {"type": "function", "function": {"name": "create_database", "description": "Create a database", "parameters": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}}},
-    {"type": "function", "function": {"name": "create_schema", "description": "Create a schema", "parameters": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}}},
-    {"type": "function", "function": {"name": "create_table", "description": "Create a table", "parameters": {"type": "object", "properties": {"name": {"type": "string"}, "columns": {"type": "string"}}, "required": ["name", "columns"]}}},
-    {"type": "function", "function": {"name": "drop_object", "description": "Drop an object", "parameters": {"type": "object", "properties": {"object_type": {"type": "string"}, "name": {"type": "string"}}, "required": ["object_type", "name"]}}},
-    {"type": "function", "function": {"name": "list_stages", "description": "List stages", "parameters": {"type": "object", "properties": {}}}},
-    {"type": "function", "function": {"name": "list_tasks", "description": "List tasks", "parameters": {"type": "object", "properties": {}}}},
-    {"type": "function", "function": {"name": "list_streams", "description": "List streams", "parameters": {"type": "object", "properties": {}}}},
-    {"type": "function", "function": {"name": "list_pipes", "description": "List snowpipes", "parameters": {"type": "object", "properties": {}}}},
-    
+    {
+        "type": "function",
+        "function": {
+            "name": "create_database",
+            "description": "Create a database",
+            "parameters": {
+                "type": "object",
+                "properties": {"name": {"type": "string"}},
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_schema",
+            "description": "Create a schema",
+            "parameters": {
+                "type": "object",
+                "properties": {"name": {"type": "string"}},
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_table",
+            "description": "Create a table",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "columns": {"type": "string"},
+                },
+                "required": ["name", "columns"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "drop_object",
+            "description": "Drop an object",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "object_type": {"type": "string"},
+                    "name": {"type": "string"},
+                },
+                "required": ["object_type", "name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_stages",
+            "description": "List stages",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_tasks",
+            "description": "List tasks",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_streams",
+            "description": "List streams",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_pipes",
+            "description": "List snowpipes",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
     # Cortex AI
-    {"type": "function", "function": {"name": "cortex_complete", "description": "Call Cortex LLM completion", "parameters": {"type": "object", "properties": {"model": {"type": "string"}, "prompt": {"type": "string"}}, "required": ["model", "prompt"]}}},
-    {"type": "function", "function": {"name": "cortex_summarize", "description": "Summarize text with Cortex", "parameters": {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]}}},
-    {"type": "function", "function": {"name": "cortex_sentiment", "description": "Get sentiment score", "parameters": {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]}}},
-    {"type": "function", "function": {"name": "cortex_classify", "description": "Classify text into categories", "parameters": {"type": "object", "properties": {"text": {"type": "string"}, "categories": {"type": "array", "items": {"type": "string"}}}, "required": ["text", "categories"]}}},
-    
+    {
+        "type": "function",
+        "function": {
+            "name": "cortex_complete",
+            "description": "Call Cortex LLM completion",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "model": {"type": "string"},
+                    "prompt": {"type": "string"},
+                },
+                "required": ["model", "prompt"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cortex_summarize",
+            "description": "Summarize text with Cortex",
+            "parameters": {
+                "type": "object",
+                "properties": {"text": {"type": "string"}},
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cortex_sentiment",
+            "description": "Get sentiment score",
+            "parameters": {
+                "type": "object",
+                "properties": {"text": {"type": "string"}},
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cortex_classify",
+            "description": "Classify text into categories",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "categories": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["text", "categories"],
+            },
+        },
+    },
     # Governance
-    {"type": "function", "function": {"name": "list_roles", "description": "List roles", "parameters": {"type": "object", "properties": {}}}},
-    {"type": "function", "function": {"name": "show_grants_on", "description": "Show grants on object", "parameters": {"type": "object", "properties": {"object_type": {"type": "string"}, "object_name": {"type": "string"}}, "required": ["object_type", "object_name"]}}},
-    {"type": "function", "function": {"name": "show_grants_to", "description": "Show grants to role", "parameters": {"type": "object", "properties": {"role_name": {"type": "string"}}, "required": ["role_name"]}}},
-    {"type": "function", "function": {"name": "list_tags", "description": "List tags", "parameters": {"type": "object", "properties": {}}}},
-    {"type": "function", "function": {"name": "list_masking_policies", "description": "List masking policies", "parameters": {"type": "object", "properties": {}}}},
-    {"type": "function", "function": {"name": "list_row_access_policies", "description": "List row access policies", "parameters": {"type": "object", "properties": {}}}},
-    
+    {
+        "type": "function",
+        "function": {
+            "name": "list_roles",
+            "description": "List roles",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "show_grants_on",
+            "description": "Show grants on object",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "object_type": {"type": "string"},
+                    "object_name": {"type": "string"},
+                },
+                "required": ["object_type", "object_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "show_grants_to",
+            "description": "Show grants to role",
+            "parameters": {
+                "type": "object",
+                "properties": {"role_name": {"type": "string"}},
+                "required": ["role_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_tags",
+            "description": "List tags",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_masking_policies",
+            "description": "List masking policies",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_row_access_policies",
+            "description": "List row access policies",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
     # Cost
-    {"type": "function", "function": {"name": "get_warehouse_usage", "description": "Get warehouse credit usage", "parameters": {"type": "object", "properties": {"days": {"type": "integer"}}, "required": []}}},
-    {"type": "function", "function": {"name": "get_storage_usage", "description": "Get storage byte usage", "parameters": {"type": "object", "properties": {}}}},
-    {"type": "function", "function": {"name": "get_login_history", "description": "Get login history", "parameters": {"type": "object", "properties": {"limit": {"type": "integer"}}, "required": []}}},
-    
+    {
+        "type": "function",
+        "function": {
+            "name": "get_warehouse_usage",
+            "description": "Get warehouse credit usage",
+            "parameters": {
+                "type": "object",
+                "properties": {"days": {"type": "integer"}},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_storage_usage",
+            "description": "Get storage byte usage",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_login_history",
+            "description": "Get login history",
+            "parameters": {
+                "type": "object",
+                "properties": {"limit": {"type": "integer"}},
+                "required": [],
+            },
+        },
+    },
     # Local
-    {"type": "function", "function": {"name": "write_local_file", "description": "Write text to local file", "parameters": {"type": "object", "properties": {"file_path": {"type": "string"}, "content": {"type": "string"}, "overwrite": {"type": "boolean"}}, "required": ["file_path", "content"]}}},
-    {"type": "function", "function": {"name": "read_local_file", "description": "Read text from local file", "parameters": {"type": "object", "properties": {"file_path": {"type": "string"}}, "required": ["file_path"]}}},
-    {"type": "function", "function": {"name": "run_shell_command", "description": "Run safe shell command (ls, echo, pwd, git)", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
+    {
+        "type": "function",
+        "function": {
+            "name": "write_local_file",
+            "description": "Write text to local file",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {"type": "string"},
+                    "content": {"type": "string"},
+                    "overwrite": {"type": "boolean"},
+                },
+                "required": ["file_path", "content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_local_file",
+            "description": "Read text from local file",
+            "parameters": {
+                "type": "object",
+                "properties": {"file_path": {"type": "string"}},
+                "required": ["file_path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_shell_command",
+            "description": "Run safe shell command (ls, echo, pwd, git)",
+            "parameters": {
+                "type": "object",
+                "properties": {"command": {"type": "string"}},
+                "required": ["command"],
+            },
+        },
+    },
 ]
 
 TOOL_DISPATCH = {
@@ -192,6 +593,7 @@ TOOL_DISPATCH = {
 
 # --- NIM CLIENT ---
 
+
 class NimClient:
     def __init__(self):
         # Cached AsyncOpenAI client — re-created only when config changes
@@ -199,17 +601,21 @@ class NimClient:
         # Persistent history separated by role lane
         self._histories: Dict[ModelRole, List[ChatCompletionMessageParam]] = {
             ModelRole.PLANNER: [],
-            ModelRole.IMPLEMENTER: []
+            ModelRole.IMPLEMENTER: [],
         }
         self._interview_history: List[ChatCompletionMessageParam] = []
+        self._model_probe_expiry: Dict[ModelRole, float] = {
+            ModelRole.PLANNER: 0.0,
+            ModelRole.IMPLEMENTER: 0.0,
+        }
+        self._model_probe_ttl_seconds = 60.0
 
     def _get_client(self) -> AsyncOpenAI:
         """Return a cached AsyncOpenAI instance, creating it on first call."""
         if self._client is None:
             pat = session.config.nvidia_pat or "dummy_key_to_prevent_crash"
             self._client = AsyncOpenAI(
-                base_url="https://integrate.api.nvidia.com/v1",
-                api_key=pat
+                base_url="https://integrate.api.nvidia.com/v1", api_key=pat
             )
         return self._client
 
@@ -218,16 +624,32 @@ class NimClient:
         self._client = None
 
     def _get_model_for_role(self, role: ModelRole) -> str:
-        if role == ModelRole.PLANNER:
-            return session.config.planner_model
-        return session.config.implementer_model
+        return session.get_active_model(role)
+
+    def _set_active_model(
+        self, role: ModelRole, model: str, healthy: bool = True
+    ) -> None:
+        session.set_active_model(role, model)
+        self._model_probe_expiry[role] = (
+            time.monotonic() + self._model_probe_ttl_seconds if healthy else 0.0
+        )
+
+    def _has_fresh_probe(self, role: ModelRole, model: str) -> bool:
+        return (
+            session.get_active_model(role) == model
+            and time.monotonic() < self._model_probe_expiry[role]
+        )
 
     @tenacity.retry(
         wait=tenacity.wait_exponential(multiplier=1, min=2, max=10),
         stop=tenacity.stop_after_attempt(5),
-        retry=tenacity.retry_if_exception_type((Exception)), # We'll filter inside _should_fallback if needed
+        retry=tenacity.retry_if_exception_type(
+            (Exception)
+        ),  # We'll filter inside _should_fallback if needed
         reraise=True,
-        before_sleep=lambda retry_state: logger.warning(f"Rate limit or API error hit. Retrying in {retry_state.next_action.sleep}s...")
+        before_sleep=lambda retry_state: logger.warning(
+            f"Rate limit or API error hit. Retrying in {retry_state.next_action.sleep}s..."
+        ),
     )
     async def _chat_with_retry(self, **kwargs):
         client = self._get_client()
@@ -236,8 +658,19 @@ class NimClient:
     def reset_history(self, role: Optional[ModelRole] = None) -> None:
         if role:
             self._histories[role] = []
+            configured_model = (
+                session.config.planner_model
+                if role == ModelRole.PLANNER
+                else session.config.implementer_model
+            )
+            self._set_active_model(role, configured_model, healthy=False)
         else:
             self._histories = {ModelRole.PLANNER: [], ModelRole.IMPLEMENTER: []}
+            session.reset_active_models()
+            self._model_probe_expiry = {
+                ModelRole.PLANNER: 0.0,
+                ModelRole.IMPLEMENTER: 0.0,
+            }
         self._interview_history = []
 
     def reset_interview(self) -> None:
@@ -245,20 +678,22 @@ class NimClient:
 
     def _build_system_prompt(self, role: ModelRole) -> str:
         base = SYSTEM_PROMPTS[role]
-        
+
         # Inject task list context for the implementer
         if role == ModelRole.IMPLEMENTER:
             if session.requirements:
                 base += f"\n\n## Current Requirements\n{session.requirements}"
             if session.task_list:
                 base += f"\n\n## Current Task List\n{session.task_list}"
-                
+
         return base
 
     async def _execute_tool(self, name: str, args: Dict[str, Any]) -> str:
         if name not in TOOL_DISPATCH:
-            return json.dumps({"status": "error", "message": f"Tool '{name}' not found."})
-        
+            return json.dumps(
+                {"status": "error", "message": f"Tool '{name}' not found."}
+            )
+
         func = TOOL_DISPATCH[name]
         try:
             result = await asyncio.to_thread(func, args)
@@ -266,7 +701,13 @@ class NimClient:
                 return result
             return json.dumps(result, default=str)
         except Exception as e:
-            return json.dumps({"status": "error", "message": str(e), "traceback": traceback.format_exc()})
+            return json.dumps(
+                {
+                    "status": "error",
+                    "message": str(e),
+                    "traceback": traceback.format_exc(),
+                }
+            )
 
     def _sniff_json_tool_calls(self, text: str) -> List[Tuple[str, Dict[str, Any]]]:
         """
@@ -293,14 +734,14 @@ class NimClient:
                 NimModel.LLAMA_4_MAVERICK.value,
                 NimModel.MISTRAL_LARGE_3.value,
                 NimModel.NEMOTRON_4_340B.value,
-                NimModel.GEMMA_4_31B.value
+                NimModel.GEMMA_4_31B.value,
             ]
-        else: # IMPLEMENTER
+        else:  # IMPLEMENTER
             return [
                 NimModel.QWEN_3_CODER.value,
                 NimModel.GLM_5_1.value,
                 NimModel.DEVSTRAL_2.value,
-                NimModel.DEEPSEEK_V4_PRO.value
+                NimModel.DEEPSEEK_V4_PRO.value,
             ]
 
     async def _resolve_model(self, requested_model: str, role: ModelRole) -> str:
@@ -308,12 +749,13 @@ class NimClient:
         Probe the NIM API to see if the requested model is alive.
         If it fails, fall back to the sequential lane-based tree.
         """
-        client = self._get_client()
-        
+        if self._has_fresh_probe(role, requested_model):
+            return requested_model
+
         # Build the chain: Requested first, then the lane-specific fallback tree
         lane_tree = self.get_fallback_chain(role)
         chain = [requested_model] + [m for m in lane_tree if m != requested_model]
-        
+
         for model in chain:
             try:
                 # Fast probe
@@ -321,34 +763,53 @@ class NimClient:
                     model=model,
                     messages=[{"role": "user", "content": "ping"}],
                     max_tokens=1,
-                    timeout=5.0
+                    timeout=5.0,
                 )
+                self._set_active_model(role, model)
                 return model
             except Exception as e:
                 logger.warning(f"Model probe failed for {model}: {e}")
                 continue
-                
+
         # If all fail, just return the requested one and let the real call fail loudly
+        self._set_active_model(role, requested_model, healthy=False)
         return requested_model
 
     def _should_fallback(self, error: Exception) -> bool:
         """Determine if an API error warrants triggering the fallback chain."""
         err_str = str(error).lower()
-        # Fall back on capacity, 404s, or specific NIM gateway errors
-        return any(flag in err_str for flag in ["404", "capacity", "rate limit", "503", "timeout"])
+        fallback_signals = (
+            "404",
+            "429",
+            "503",
+            "504",
+            "capacity",
+            "overloaded",
+            "rate limit",
+            "too many requests",
+            "timeout",
+            "timed out",
+            "not found",
+            "model is currently loading",
+        )
+        return any(flag in err_str for flag in fallback_signals)
 
-    async def agent_chat(self, prompt: str, role: ModelRole = ModelRole.PLANNER, max_iterations: Optional[int] = None) -> AsyncGenerator[Tuple[str, Any], None]:
-        client = self._get_client()
+    async def agent_chat(
+        self,
+        prompt: str,
+        role: ModelRole = ModelRole.PLANNER,
+        max_iterations: Optional[int] = None,
+    ) -> AsyncGenerator[Tuple[str, Any], None]:
         requested_model = self._get_model_for_role(role)
-        
+
         # Use session limit if no override passed
         limit = max_iterations or session.max_iterations
-        
+
         # 1. Resolve alive model
         model = await self._resolve_model(requested_model, role)
         if model != requested_model:
             yield "model_switch", model
-            
+
         # 2. Skill Routing (Ephemeral)
         matched_skills = skill_router.route(prompt)
         skill_context = ""
@@ -363,7 +824,7 @@ class NimClient:
 
         # 3. Build Messages
         sys_prompt = self._build_system_prompt(role)
-        
+
         # Ephemeral system message containing dynamic context (task list, skills)
         ephemeral_sys = {"role": "system", "content": sys_prompt}
         if skill_context:
@@ -376,13 +837,9 @@ class NimClient:
         for iteration in range(limit):
             # Rebuild messages for this iteration: ephemeral sys + persistent history
             messages = [ephemeral_sys] + self._histories[role]
-            
+
             try:
-                kwargs = {
-                    "model": model,
-                    "messages": messages,
-                    "temperature": 0.2
-                }
+                kwargs = {"model": model, "messages": messages, "temperature": 0.2}
                 if model not in NO_TOOLS_MODELS:
                     kwargs["tools"] = SNOWFLAKE_TOOLS
                     kwargs["tool_choice"] = "auto"
@@ -399,11 +856,12 @@ class NimClient:
                         if fallback_model == model:
                             continue  # already failed
                         model = fallback_model
-                        yield "model_switch", model
                         try:
                             kwargs["model"] = model
                             response = await self._chat_with_retry(**kwargs)
                             response_msg = response.choices[0].message
+                            self._set_active_model(role, model)
+                            yield "model_switch", model
                             fallback_succeeded = True
                             break
                         except Exception:
@@ -426,25 +884,27 @@ class NimClient:
                         tool_args = json.loads(tool_call.function.arguments)
                     except json.JSONDecodeError:
                         tool_args = {}
-                    
+
                     yield "tool_call", (tool_name, tool_args)
                     tool_result = await self._execute_tool(tool_name, tool_args)
                     yield "tool_result", tool_result
-                    
+
                     # Randomized jitter to prevent burst rate limit (429)
                     await asyncio.sleep(random.uniform(0.5, 1.5))
-                    
-                    self._histories[role].append({
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": tool_name,
-                        "content": tool_result
-                    })
+
+                    self._histories[role].append(
+                        {
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": tool_name,
+                            "content": tool_result,
+                        }
+                    )
             else:
                 # No tool_calls field, but let's SNIFF the text for raw JSON leaks
                 content = response_msg.content or ""
                 sniffed_calls = self._sniff_json_tool_calls(content)
-                
+
                 if sniffed_calls:
                     for tool_name, tool_args in sniffed_calls:
                         yield "tool_call", (tool_name, tool_args)
@@ -453,13 +913,11 @@ class NimClient:
 
                         # Jitter for sniffed calls too
                         await asyncio.sleep(random.uniform(0.5, 1.5))
-                        
+
                         # Add a fake tool message to history to keep the loop valid
-                        self._histories[role].append({
-                            "role": "tool",
-                            "name": tool_name,
-                            "content": tool_result
-                        })
+                        self._histories[role].append(
+                            {"role": "tool", "name": tool_name, "content": tool_result}
+                        )
                     # Re-run the loop to let the model react to the sniffed results
                     continue
 
@@ -467,23 +925,28 @@ class NimClient:
                 final_text = content
                 yield "text", final_text
                 return
-                
+
         yield "error", f"Exceeded maximum tool iterations ({limit})."
 
-    async def interview_chat(self, user_input: str, force_finalize: bool = False) -> AsyncGenerator[Tuple[str, Any], None]:
-        client = self._get_client()
+    async def interview_chat(
+        self, user_input: str, force_finalize: bool = False
+    ) -> AsyncGenerator[Tuple[str, Any], None]:
         requested_model = self._get_model_for_role(ModelRole.PLANNER)
-        
+
         # Resolve model with fallbacks
         model = await self._resolve_model(requested_model, ModelRole.PLANNER)
         if model != requested_model:
             yield "model_switch", model
-        
+
         # Initialize history with system prompt and skills on first turn
         if not self._interview_history:
             matched_skills = skill_router.route(user_input)
-            skill_block = skill_router.format_for_planner(matched_skills) if matched_skills else ""
-            
+            skill_block = (
+                skill_router.format_for_planner(matched_skills)
+                if matched_skills
+                else ""
+            )
+
             system_content = INTERVIEW_SYSTEM_PROMPT
             if skill_block:
                 system_content += (
@@ -492,31 +955,36 @@ class NimClient:
                     f"--- END SKILL CONTEXT ---"
                 )
             self._interview_history = [{"role": "system", "content": system_content}]
-        
+
         if force_finalize:
-            self._interview_history.append({"role": "user", "content": "Please generate the Requirements and Task List now based on everything we've discussed. Output the ## Requirements and ## Task List sections exactly as specified."})
+            self._interview_history.append(
+                {
+                    "role": "user",
+                    "content": "Please generate the Requirements and Task List now based on everything we've discussed. Output the ## Requirements and ## Task List sections exactly as specified.",
+                }
+            )
         else:
             self._interview_history.append({"role": "user", "content": user_input})
-            
+
         # We don't prepend sys_msg here anymore because it's at index 0 of _interview_history
         messages = self._interview_history
-        
+
         try:
             response = await self._chat_with_retry(
-                model=model,
-                messages=messages,
-                temperature=0.7
+                model=model, messages=messages, temperature=0.7
             )
             content = response.choices[0].message.content or ""
             self._interview_history.append({"role": "assistant", "content": content})
-            
+
             if "## Requirements" in content and "## Task List" in content:
                 yield "interview_complete", content
-            elif "REQUIREMENTS_GATHERED" in content: # Fallback legacy check
-                yield "interview_ready", content.replace("REQUIREMENTS_GATHERED", "").strip()
+            elif "REQUIREMENTS_GATHERED" in content:  # Fallback legacy check
+                yield (
+                    "interview_ready",
+                    content.replace("REQUIREMENTS_GATHERED", "").strip(),
+                )
             else:
                 yield "text", content
-                
+
         except Exception as e:
             yield "error", f"Error during interview: {e}"
-

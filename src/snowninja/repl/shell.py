@@ -7,9 +7,13 @@ Renders a scrolling terminal REPL:
   - prompt_toolkit provides the sticky bottom input with autocomplete
   - Bottom toolbar shows connection / model / mode live
 """
+
 import asyncio
 import json
+import os
+import re
 import sys
+import traceback
 from typing import Optional
 
 from prompt_toolkit import PromptSession
@@ -37,16 +41,16 @@ VERSION = "0.2.7"
 # ─────────────────────────────────────────────────────────────────────────────
 # Snowflake Brand Palette
 # ─────────────────────────────────────────────────────────────────────────────
-SF_BLUE     = "#29B5E8"   # Snowflake primary blue
-SF_BLUE_L   = "#56C9F2"   # Lighter blue
-SF_BLUE_D   = "#1A82A8"   # Darker blue
-SF_NAVY     = "#0D2233"   # Deep navy background
-SF_NAV      = "#1B3B52"   # Toolbar background
-SF_TEXT     = "#89A4B8"   # Secondary text
-SF_YELLOW   = "#FFB81C"   # Accent/success
-SF_YELLOW_L = "#FFD166"   # Lighter yellow
-SF_WHITE    = "#FFFFFF"
-SF_SNOW     = "#F4F7F9"   # Lightest background
+SF_BLUE = "#29B5E8"  # Snowflake primary blue
+SF_BLUE_L = "#56C9F2"  # Lighter blue
+SF_BLUE_D = "#1A82A8"  # Darker blue
+SF_NAVY = "#0D2233"  # Deep navy background
+SF_NAV = "#1B3B52"  # Toolbar background
+SF_TEXT = "#89A4B8"  # Secondary text
+SF_YELLOW = "#FFB81C"  # Accent/success
+SF_YELLOW_L = "#FFD166"  # Lighter yellow
+SF_WHITE = "#FFFFFF"
+SF_SNOW = "#F4F7F9"  # Lightest background
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ASCII splash
@@ -72,38 +76,39 @@ NINJA_ASCII = r"""
 # Slash commands with descriptions
 # ─────────────────────────────────────────
 SLASH_COMMANDS = {
-    "/help":               "Show available commands",
-    "/plan":               "Switch to Planner mode (reasoning model)",
-    "/implement":          "Switch to Implementer mode (coder model)",
-    "/interview":          "Start guided requirements interview — /interview <goal>",
-    "/go":                 "Finalize the interview and generate Requirements + Task List",
-    "/explore":            "Switch to Explore mode (read-only data inspection)",
-    "/operate":            "Switch to Operate mode (run pipelines, tasks, SQL)",
-    "/govern":             "Switch to Govern mode (roles, grants, policies)",
-    "/cost":               "Switch to Cost mode (warehouses, credits)",
-    "/model planner ":     "Set the planner model  e.g. /model planner meta/llama-3.1-405b-instruct",
+    "/help": "Show available commands",
+    "/plan": "Switch to Planner mode (reasoning model)",
+    "/implement": "Switch to Implementer mode (coder model)",
+    "/interview": "Start guided requirements interview — /interview <goal>",
+    "/go": "Finalize the interview and generate Requirements + Task List",
+    "/explore": "Switch to Explore mode (read-only data inspection)",
+    "/operate": "Switch to Operate mode (run pipelines, tasks, SQL)",
+    "/govern": "Switch to Govern mode (roles, grants, policies)",
+    "/cost": "Switch to Cost mode (warehouses, credits)",
+    "/model planner ": "Set the planner model  e.g. /model planner meta/llama-3.1-405b-instruct",
     "/model implementer ": "Set the implementer model  e.g. /model implementer qwen/qwen2.5-coder-32b-instruct",
-    "/models":             "List available NIM model families",
-    "/tools":              "List all loaded Snowflake action tools",
-    "/skills":             "List skill guides (/skills <name> to view one)",
-    "/tasks":              "Show task list  —  /tasks clear to wipe it",
-    "/new":                "Fresh start — clears task list, requirements, interview & chat history",
-    "/connection":         "Show current Snowflake connection status",
-    "/scaffold":           "Scaffold a Snowflake project (pipeline, app, snowpark)",
-    "/history":            "Show conversation history",
-    "/clear":              "Clear conversation history only (keeps task list)",
-    "/quit":               "Exit SnowNinja",
-    "/exit":               "Exit SnowNinja",
+    "/models": "List available NIM model families",
+    "/tools": "List all loaded Snowflake action tools",
+    "/skills": "List skill guides (/skills <name> to view one)",
+    "/tasks": "Show task list  —  /tasks clear to wipe it",
+    "/new": "Fresh start — clears task list, requirements, interview & chat history",
+    "/connection": "Show current Snowflake connection status",
+    "/scaffold": "Scaffold a Snowflake project (pipeline, app, snowpark)",
+    "/history": "Show conversation history",
+    "/clear": "Clear conversation history only (keeps task list)",
+    "/quit": "Exit SnowNinja",
+    "/exit": "Exit SnowNinja",
 }
 
 MODES = {
-    "plan":      ("planner",     "📐", SF_BLUE),
+    "plan": ("planner", "📐", SF_BLUE),
     "implement": ("implementer", "⚙️ ", SF_YELLOW),
-    "explore":   ("implementer", "🔍", SF_BLUE_L),
-    "operate":   ("implementer", "▶️ ", SF_YELLOW_L),
-    "govern":    ("planner",     "🏛️ ", SF_BLUE_D),
-    "cost":      ("planner",     "💰", SF_BLUE),
+    "explore": ("implementer", "🔍", SF_BLUE_L),
+    "operate": ("implementer", "▶️ ", SF_YELLOW_L),
+    "govern": ("planner", "🏛️ ", SF_BLUE_D),
+    "cost": ("planner", "💰", SF_BLUE),
 }
+
 
 class SlashCompleter(Completer):
     """Inline dropdown completer triggered on '/'."""
@@ -122,15 +127,19 @@ class SlashCompleter(Completer):
                     display_meta=desc,
                 )
 
-PT_STYLE = Style.from_dict({
-    "prompt":              f"bold",
-    "bottom-toolbar":      f"bg:{SF_NAV} {SF_TEXT}",
-    "bottom-toolbar.text": f"bg:{SF_NAV} {SF_TEXT}",
-    "completion-menu.completion":              f"bg:{SF_NAVY} {SF_SNOW}",
-    "completion-menu.completion.current":      f"bg:{SF_BLUE} {SF_WHITE} bold",
-    "completion-menu.meta.completion":         f"bg:{SF_NAVY} {SF_TEXT}",
-    "completion-menu.meta.completion.current": f"bg:{SF_BLUE} {SF_NAVY}",
-})
+
+PT_STYLE = Style.from_dict(
+    {
+        "prompt": "bold",
+        "bottom-toolbar": f"bg:{SF_NAV} {SF_TEXT}",
+        "bottom-toolbar.text": f"bg:{SF_NAV} {SF_TEXT}",
+        "completion-menu.completion": f"bg:{SF_NAVY} {SF_SNOW}",
+        "completion-menu.completion.current": f"bg:{SF_BLUE} {SF_WHITE} bold",
+        "completion-menu.meta.completion": f"bg:{SF_NAVY} {SF_TEXT}",
+        "completion-menu.meta.completion.current": f"bg:{SF_BLUE} {SF_NAVY}",
+    }
+)
+
 
 def _print_splash() -> None:
     """Print the Snowflake-branded startup splash to stdout once."""
@@ -143,25 +152,29 @@ def _print_splash() -> None:
     else:
         conn_info = "Not configured"
 
-    impl    = config.implementer_model
+    impl = config.implementer_model
     planner = config.planner_model
 
     logo_text = Text(NINJA_ASCII, style=f"bold {SF_BLUE}")
     console.print(logo_text)
 
-    console.print(Rule(
-        f"[bold]Snowflake Agent Harness[/]  [dim]v{VERSION}[/]",
-        style=SF_BLUE,
-    ))
+    console.print(
+        Rule(
+            f"[bold]Snowflake Agent Harness[/]  [dim]v{VERSION}[/]",
+            style=SF_BLUE,
+        )
+    )
     console.print()
 
-    console.print(Panel(
-        f"[bold {SF_YELLOW}]⬡  Connection:[/]  [white]{conn_info}[/]\n"
-        f"[bold {SF_BLUE_L}]⚙  Implementer:[/] [white]{impl}[/]\n"
-        f"[bold {SF_BLUE_D}]📐 Planner:[/]     [white]{planner}[/]",
-        border_style=SF_NAVY,
-        padding=(0, 2),
-    ))
+    console.print(
+        Panel(
+            f"[bold {SF_YELLOW}]⬡  Connection:[/]  [white]{conn_info}[/]\n"
+            f"[bold {SF_BLUE_L}]⚙  Implementer:[/] [white]{impl}[/]\n"
+            f"[bold {SF_BLUE_D}]📐 Planner:[/]     [white]{planner}[/]",
+            border_style=SF_NAVY,
+            padding=(0, 2),
+        )
+    )
 
     tips = (
         f"  [bold {SF_YELLOW}]1.[/] Ask anything: [bold]show my warehouses[/] or [bold]create a medallion pipeline[/]\n"
@@ -169,12 +182,14 @@ def _print_splash() -> None:
         f"  [bold {SF_YELLOW}]3.[/] Scaffold:      [bold {SF_BLUE}]/scaffold pipeline-project[/]  or  [bold {SF_BLUE}]/scaffold app-project[/]\n"
         f"  [bold {SF_YELLOW}]4.[/] Autocomplete:  type [bold {SF_BLUE}]/[/] — dropdown opens instantly"
     )
-    console.print(Panel(
-        tips,
-        title=f"[bold {SF_BLUE}]Getting Started[/]",
-        border_style=SF_NAV,
-        padding=(0, 2),
-    ))
+    console.print(
+        Panel(
+            tips,
+            title=f"[bold {SF_BLUE}]Getting Started[/]",
+            border_style=SF_NAV,
+            padding=(0, 2),
+        )
+    )
     console.print()
 
 
@@ -193,6 +208,7 @@ class SnowNinjaShell:
     def _get_nim_client(self):
         if self._nim_client is None:
             from snowninja.llm.nim_client import NimClient
+
             self._nim_client = NimClient()
         return self._nim_client
 
@@ -206,9 +222,9 @@ class SnowNinjaShell:
             conn = "no-profile"
 
         model = (
-            config.planner_model
+            session.get_active_model("planner")
             if self.model_role == "planner"
-            else config.implementer_model
+            else session.get_active_model("implementer")
         )
 
         if session.interview_mode:
@@ -235,7 +251,6 @@ class SnowNinjaShell:
         self.model_role = role
         self.mode_icon = icon
         self.mode_color = color
-        self._nim_client = None  # reset so role is re-applied
         return True
 
     # ─────────────────────────────────────
@@ -247,12 +262,14 @@ class SnowNinjaShell:
             f"  [bold {SF_BLUE}]{cmd:<30}[/] [dim {SF_TEXT}]{desc}[/]"
             for cmd, desc in SLASH_COMMANDS.items()
         )
-        console.print(Panel(
-            rows,
-            title=f"[bold {SF_BLUE}]SnowNinja Commands[/]",
-            border_style=SF_NAV,
-            padding=(0, 2),
-        ))
+        console.print(
+            Panel(
+                rows,
+                title=f"[bold {SF_BLUE}]SnowNinja Commands[/]",
+                border_style=SF_NAV,
+                padding=(0, 2),
+            )
+        )
 
     def _cmd_mode(self, parts: list[str]) -> None:
         cmd = parts[0].lstrip("/")
@@ -261,14 +278,22 @@ class SnowNinjaShell:
         elif len(parts) >= 2:
             mode = parts[1].lower()
         else:
-            console.print(f"[red]Usage:[/] /<mode>  — one of: {', '.join(MODES.keys())}")
+            console.print(
+                f"[red]Usage:[/] /<mode>  — one of: {', '.join(MODES.keys())}"
+            )
             return
 
         if self._set_mode(mode):
-            console.print(Rule(f"[bold]Mode → {self.mode_icon} {mode.upper()}[/]", style=self.mode_color))
+            console.print(
+                Rule(
+                    f"[bold]Mode → {self.mode_icon} {mode.upper()}[/]",
+                    style=self.mode_color,
+                )
+            )
             if mode == "implement" and session.task_list:
                 task_count = sum(
-                    1 for line in session.task_list.splitlines()
+                    1
+                    for line in session.task_list.splitlines()
                     if line.strip().startswith("- [ ]")
                 )
                 console.print(
@@ -277,35 +302,91 @@ class SnowNinjaShell:
                     f"[dim {SF_TEXT}]Type [bold {SF_YELLOW}]start[/] to begin, or ask about a specific task.[/]\n"
                 )
         else:
-            console.print(f"[red]Unknown mode:[/] {mode}  — choose from: {', '.join(MODES.keys())}")
+            console.print(
+                f"[red]Unknown mode:[/] {mode}  — choose from: {', '.join(MODES.keys())}"
+            )
 
     def _cmd_models(self, _: list[str]) -> None:
+        active_planner = session.get_active_model("planner")
+        active_implementer = session.get_active_model("implementer")
         planner_tree = [
-            ("meta/llama-4-maverick-17b-128e-instruct", "DEFAULT", "Llama 4 MoE · Maverick · Workhorse"),
-            ("mistralai/mistral-large-3-675b-instruct-2512", "FALLBACK", "Mistral Large 3 · 675B · Frontier Logic"),
-            ("nvidia/nemotron-4-340b-instruct", "FALLBACK", "Nemotron 4 · 340B · Nvidia Standard"),
+            (
+                "meta/llama-4-maverick-17b-128e-instruct",
+                "DEFAULT",
+                "Llama 4 MoE · Maverick · Workhorse",
+            ),
+            (
+                "mistralai/mistral-large-3-675b-instruct-2512",
+                "FALLBACK",
+                "Mistral Large 3 · 675B · Frontier Logic",
+            ),
+            (
+                "nvidia/nemotron-4-340b-instruct",
+                "FALLBACK",
+                "Nemotron 4 · 340B · Nvidia Standard",
+            ),
             ("google/gemma-4-31b-it", "FALLBACK", "Gemma 4 · 31B · Agile Planner"),
         ]
         implementer_tree = [
-            ("qwen/qwen3-coder-480b-a35b-instruct", "DEFAULT", "Qwen 3 Coder · 480B · SOTA Coding"),
+            (
+                "qwen/qwen3-coder-480b-a35b-instruct",
+                "DEFAULT",
+                "Qwen 3 Coder · 480B · SOTA Coding",
+            ),
             ("z-ai/glm-5.1", "FALLBACK", "GLM 5.1 · Next-Gen Agentic"),
-            ("mistralai/devstral-2-123b-instruct-2512", "FALLBACK", "Devstral 2 · High Fidelity Logic"),
-            ("deepseek-ai/deepseek-v4-pro", "STABLE", "DeepSeek V4 Pro · Reliable Heavyweight"),
+            (
+                "mistralai/devstral-2-123b-instruct-2512",
+                "FALLBACK",
+                "Devstral 2 · High Fidelity Logic",
+            ),
+            (
+                "deepseek-ai/deepseek-v4-pro",
+                "STABLE",
+                "DeepSeek V4 Pro · Reliable Heavyweight",
+            ),
         ]
         specialized_tiers = [
             ("moonshotai/kimi-k2.6", "PREMIUM", "Kimi 2.6 · 11T MoE · Benchmark King"),
-            ("moonshotai/kimi-k2-thinking", "THINKING", "Kimi K2 · Deep Chain-of-Thought"),
-            ("deepseek-ai/deepseek-v4-flash", "FLASH", "DeepSeek V4 Flash · Sub-Second Latency"),
-            ("mistralai/mistral-small-4-119b-2603", "STABLE", "Mistral Small v4 · 119B · Versatile Anchor"),
+            (
+                "moonshotai/kimi-k2-thinking",
+                "THINKING",
+                "Kimi K2 · Deep Chain-of-Thought",
+            ),
+            (
+                "deepseek-ai/deepseek-v4-flash",
+                "FLASH",
+                "DeepSeek V4 Flash · Sub-Second Latency",
+            ),
+            (
+                "mistralai/mistral-small-4-119b-2603",
+                "STABLE",
+                "Mistral Small v4 · 119B · Versatile Anchor",
+            ),
         ]
 
-        def fmt_row(model_id: str, tag: str, desc: str, color: str) -> str:
-            tag_str = f" [dim white][[/][bold white]{tag}[/][dim white]][/]" if tag else ""
-            return f"  [{color}]{model_id}[/{color}]{tag_str}\n    [dim]{desc}[/]"
+        def fmt_row(
+            model_id: str, tag: str, desc: str, color: str, active_model: str
+        ) -> str:
+            tag_str = (
+                f" [dim white][[/][bold white]{tag}[/][dim white]][/]" if tag else ""
+            )
+            active_str = (
+                " [dim white][[/][bold yellow]ACTIVE[/][dim white]][/]"
+                if model_id == active_model
+                else ""
+            )
+            return f"  [{color}]{model_id}[/{color}]{tag_str}{active_str}\n    [dim]{desc}[/]"
 
-        planner_rows = "\n".join(fmt_row(m, t, d, "cyan") for m, t, d in planner_tree)
-        impl_rows    = "\n".join(fmt_row(m, t, d, "green") for m, t, d in implementer_tree)
-        spec_rows    = "\n".join(fmt_row(m, t, d, "yellow") for m, t, d in specialized_tiers)
+        planner_rows = "\n".join(
+            fmt_row(m, t, d, "cyan", active_planner) for m, t, d in planner_tree
+        )
+        impl_rows = "\n".join(
+            fmt_row(m, t, d, "green", active_implementer)
+            for m, t, d in implementer_tree
+        )
+        spec_rows = "\n".join(
+            fmt_row(m, t, d, "yellow", "") for m, t, d in specialized_tiers
+        )
 
         table_content = (
             f"[bold white]📐 Planner Lane Tree[/] [dim](Sequential Fallback)[/]\n\n"
@@ -314,33 +395,41 @@ class SnowNinjaShell:
             f"{impl_rows}\n\n"
             f"[bold white]✨ Specialized Tiers[/] [dim](Available to both lanes)[/]\n\n"
             f"{spec_rows}\n\n"
+            f"[dim]ACTIVE shows the runtime lane model after fallback resolution.[/]\n"
             f"[dim]Manual switch: [yellow]/model planner <id>[/]  or  [yellow]/model implementer <id>[/][/]"
         )
-        console.print(Panel(
-            table_content,
-            title=f"SnowNinja v{VERSION} — NIM Frontier Registry",
-            border_style="bright_blue",
-            padding=(1, 2),
-        ))
+        console.print(
+            Panel(
+                table_content,
+                title=f"SnowNinja v{VERSION} — NIM Frontier Registry",
+                border_style="bright_blue",
+                padding=(1, 2),
+            )
+        )
 
     def _cmd_connection(self, _: list[str]) -> None:
         from snowninja.actions.tools_core import tools
+
         prof = session.config.snowflake_profile or "Not set"
-        console.print(Panel(
-            f"[bold cyan]Profile:[/]  [white]{prof}[/]",
-            title="[bold white]Connection[/]",
-            border_style="cyan",
-            padding=(0, 2),
-        ))
+        console.print(
+            Panel(
+                f"[bold cyan]Profile:[/]  [white]{prof}[/]",
+                title="[bold white]Connection[/]",
+                border_style="cyan",
+                padding=(0, 2),
+            )
+        )
         try:
             with console.status("[yellow]Checking auth...[/]"):
                 user = tools.get_current_user()
             if user:
-                console.print(f"  [green]✓[/] Authenticated as [bold]{user.get('USER')}[/]")
+                console.print(
+                    f"  [green]✓[/] Authenticated as [bold]{user.get('USER')}[/]"
+                )
                 console.print(f"  [dim]Role:[/] {user.get('ROLE')}")
                 console.print(f"  [dim]Warehouse:[/] {user.get('WAREHOUSE')}")
             else:
-                console.print(f"  [red]✗[/] Auth check failed (No results returned)")
+                console.print("  [red]✗[/] Auth check failed (No results returned)")
         except Exception as e:
             console.print(f"  [red]✗[/] Auth check failed: {e}")
 
@@ -349,6 +438,7 @@ class SnowNinjaShell:
 
         if subcommand == "clear":
             from rich.prompt import Confirm
+
             if not session.task_list and not session.requirements:
                 console.print("  [dim]Task list is already empty.[/]")
                 return
@@ -360,25 +450,29 @@ class SnowNinjaShell:
                 session.task_list = ""
                 session.requirements = ""
                 session.reset_interview()
-                console.print(f"  [bold {SF_YELLOW}]✓[/] [dim]Task list and requirements cleared.[/]")
+                console.print(
+                    f"  [bold {SF_YELLOW}]✓[/] [dim]Task list and requirements cleared.[/]"
+                )
         elif not session.task_list:
             console.print(
-                f"  [dim]No task list yet. Use [yellow]/plan[/] or [yellow]/interview[/] to design something.[/]\n"
-                f"  [dim]Tip: [yellow]/tasks clear[/] to wipe an existing task list.[/]"
+                "  [dim]No task list yet. Use [yellow]/plan[/] or [yellow]/interview[/] to design something.[/]\n"
+                "  [dim]Tip: [yellow]/tasks clear[/] to wipe an existing task list.[/]"
             )
         else:
             req_panel = ""
             if session.requirements:
                 req_panel = f"**Requirements**\n{session.requirements}\n\n---\n\n"
-            console.print(Panel(
-                Markdown(req_panel + "**Task List**\n" + session.task_list),
-                title=(
-                    f"[bold {SF_YELLOW}]📋 Plan[/] "
-                    f"[dim]— /tasks clear to wipe — switch to [yellow]/implement[/] to execute[/]"
-                ),
-                border_style=SF_YELLOW,
-                padding=(1, 2),
-            ))
+            console.print(
+                Panel(
+                    Markdown(req_panel + "**Task List**\n" + session.task_list),
+                    title=(
+                        f"[bold {SF_YELLOW}]📋 Plan[/] "
+                        f"[dim]— /tasks clear to wipe — switch to [yellow]/implement[/] to execute[/]"
+                    ),
+                    border_style=SF_YELLOW,
+                    padding=(1, 2),
+                )
+            )
 
     def _cmd_interview(self, parts: list[str]) -> None:
         initial_goal = " ".join(parts[1:]).strip() if len(parts) > 1 else ""
@@ -395,27 +489,29 @@ class SnowNinjaShell:
         session.interview_mode = True
 
         console.print()
-        console.print(Panel(
-            f"[bold white]{initial_goal}[/]\n\n"
-            f"[dim]I'll ask a few focused questions to shape the requirements.\n"
-            f"Answer each one, then type [bold yellow]/go[/] when you're ready to generate the Task List.[/]",
-            title=f"[bold {SF_BLUE}]🎙️  Requirements Interview[/]",
-            border_style=SF_BLUE,
-            padding=(1, 2),
-        ))
+        console.print(
+            Panel(
+                f"[bold white]{initial_goal}[/]\n\n"
+                f"[dim]I'll ask a few focused questions to shape the requirements.\n"
+                f"Answer each one, then type [bold yellow]/go[/] when you're ready to generate the Task List.[/]",
+                title=f"[bold {SF_BLUE}]🎙️  Requirements Interview[/]",
+                border_style=SF_BLUE,
+                padding=(1, 2),
+            )
+        )
         console.print()
 
         self._run_interview(initial_goal, force_finalize=False)
 
     def _cmd_go(self, _: list[str]) -> None:
         if not session.interview_mode:
-            console.print(f"  [dim]No active interview. Start one with [yellow]/interview <goal>[/][/]")
+            console.print("  [dim]No active interview. Start one with [yellow]/interview <goal>[/][/]")
             return
         self._run_interview("Please finalize now.", force_finalize=True)
 
     def _run_interview(self, user_message: str, force_finalize: bool = False) -> None:
         client = self._get_nim_client()
-        model_short = session.config.planner_model.split("/")[-1]
+        model_short = session.get_active_model("planner").split("/")[-1]
 
         if not force_finalize:
             console.print(f"[bold {SF_BLUE}]❯[/] [white]{user_message}[/]")
@@ -436,7 +532,13 @@ class SnowNinjaShell:
                     user_message, force_finalize=force_finalize
                 ):
                     if ev_type == "error":
-                        console.print(Panel(f"[red]{data}[/]", title="[red]Error[/]", border_style="red"))
+                        console.print(
+                            Panel(
+                                f"[red]{data}[/]",
+                                title="[red]Error[/]",
+                                border_style="red",
+                            )
+                        )
                         return
                     response_text = data
                     event_type_final = ev_type
@@ -448,14 +550,17 @@ class SnowNinjaShell:
                 req_text = ""
                 task_text = ""
 
-                if "## Requirements" in response_text and "## Task List" in response_text:
+                if (
+                    "## Requirements" in response_text
+                    and "## Task List" in response_text
+                ):
                     req_section = response_text.split("## Requirements", 1)[1]
                     req_text = req_section.split("## Task List", 1)[0].strip()
                     task_text = req_section.split("## Task List", 1)[1].strip()
 
                 session.requirements = req_text
                 session.task_list = task_text
-                
+
                 # Dynamic iteration budget extraction
                 # Permissive regex: handles "## Estimated Iterations\n15",
                 # "## Estimated Iterations: 15", "## Estimated Iterations\n**15**", etc.
@@ -469,12 +574,14 @@ class SnowNinjaShell:
                 else:
                     session.max_iterations = 20  # Reset to default if not specified
 
-                console.print(Panel(
-                    Markdown(response_text),
-                    title=f"[bold {SF_YELLOW}]📋 Requirements & Task List[/]",
-                    border_style=SF_YELLOW,
-                    padding=(1, 2),
-                ))
+                console.print(
+                    Panel(
+                        Markdown(response_text),
+                        title=f"[bold {SF_YELLOW}]📋 Requirements & Task List[/]",
+                        border_style=SF_YELLOW,
+                        padding=(1, 2),
+                    )
+                )
                 console.print()
                 console.print(
                     f"  [bold {SF_YELLOW}]✓ Task list saved.[/] "
@@ -512,15 +619,19 @@ class SnowNinjaShell:
         if skill_arg:
             content = skill_router.load_skill(skill_arg)
             if content:
-                console.print(Panel(
-                    Markdown(content),
-                    title=f"[bold {SF_YELLOW}]📖 Skill: {skill_arg}[/]",
-                    border_style=SF_YELLOW,
-                    padding=(1, 2),
-                ))
+                console.print(
+                    Panel(
+                        Markdown(content),
+                        title=f"[bold {SF_YELLOW}]📖 Skill: {skill_arg}[/]",
+                        border_style=SF_YELLOW,
+                        padding=(1, 2),
+                    )
+                )
             else:
                 console.print(f"  [red]Skill not found:[/] {skill_arg}")
-                console.print("  [dim]Use [yellow]/skills[/] to list available skills.[/]")
+                console.print(
+                    "  [dim]Use [yellow]/skills[/] to list available skills.[/]"
+                )
         else:
             skills_dir = Path(__file__).parent.parent / "skills"
             lines = []
@@ -529,48 +640,74 @@ class SnowNinjaShell:
                 m = re.search(r'description:\s*["\']?(.+?)["\']?\s*\n', text)
                 desc = m.group(1)[:90] if m else ""
                 lines.append(f"  [bold green]{f.stem:<35}[/] [dim]{desc}[/]")
-            console.print(Panel(
-                "\n".join(lines),
-                title=f"[bold white]Snowflake Skill Guides ({len(lines)} loaded)[/] "
-                      f"[dim]— /skills <name> to view full content[/]",
-                border_style="green",
-                padding=(0, 2),
-            ))
+            console.print(
+                Panel(
+                    "\n".join(lines),
+                    title=f"[bold white]Snowflake Skill Guides ({len(lines)} loaded)[/] "
+                    f"[dim]— /skills <name> to view full content[/]",
+                    border_style="green",
+                    padding=(0, 2),
+                )
+            )
 
     def _cmd_tools(self, _: list[str]) -> None:
         from snowninja.llm.nim_client import SNOWFLAKE_TOOLS
+
         tools_list = "\n".join(
             f"  [bold green]{t['function']['name']:<35}[/] [dim]{t['function']['description']}[/]"
             for t in SNOWFLAKE_TOOLS
         )
-        console.print(Panel(tools_list, title=f"[bold white]Snowflake Action Tools ({len(SNOWFLAKE_TOOLS)} loaded)[/]", border_style="green", padding=(0, 2)))
+        console.print(
+            Panel(
+                tools_list,
+                title=f"[bold white]Snowflake Action Tools ({len(SNOWFLAKE_TOOLS)} loaded)[/]",
+                border_style="green",
+                padding=(0, 2),
+            )
+        )
 
     def _cmd_set_model(self, parts: list[str]) -> None:
         if len(parts) < 3:
-            console.print("[red]Usage:[/] /model planner <name>  or  /model implementer <name>")
+            console.print(
+                "[red]Usage:[/] /model planner <name>  or  /model implementer <name>"
+            )
             return
         lane, model_name = parts[1].lower(), parts[2]
         if lane in ("planner", "plan"):
             session.config.planner_model = model_name
+            session.set_active_model("planner", model_name)
             save_config(session.config)
             console.print(f"  [green]✓[/] Planner model set to [bold]{model_name}[/]")
         elif lane in ("implementer", "implement"):
             session.config.implementer_model = model_name
+            session.set_active_model("implementer", model_name)
             save_config(session.config)
-            console.print(f"  [green]✓[/] Implementer model set to [bold]{model_name}[/]")
+            console.print(
+                f"  [green]✓[/] Implementer model set to [bold]{model_name}[/]"
+            )
         else:
-            console.print(f"[red]Unknown lane:[/] {lane}. Use [yellow]planner[/] or [yellow]implementer[/].")
+            console.print(
+                f"[red]Unknown lane:[/] {lane}. Use [yellow]planner[/] or [yellow]implementer[/]."
+            )
         self._nim_client = None
 
     def _cmd_clear(self, _: list[str]) -> None:
         self.history = []
         if self._nim_client:
             self._nim_client.reset_history()
-        console.print(Rule("[dim]Conversation history cleared (task list preserved)[/]", style="dim"))
+        console.print(
+            Rule(
+                "[dim]Conversation history cleared (task list preserved)[/]",
+                style="dim",
+            )
+        )
 
     def _cmd_new(self, _: list[str]) -> None:
         from rich.prompt import Confirm
-        has_state = bool(session.task_list or session.requirements or session.interview_mode)
+
+        has_state = bool(
+            session.task_list or session.requirements or session.interview_mode
+        )
         has_history = bool(self.history)
         if not has_state and not has_history:
             console.print("  [dim]Nothing to clear — already a clean slate.[/]")
@@ -595,15 +732,18 @@ class SnowNinjaShell:
         session.task_list = ""
         session.requirements = ""
         session.reset_interview()
+        session.reset_active_models()
         self.history = []
         if self._nim_client:
             self._nim_client.reset_history()
 
         console.print()
-        console.print(Rule(
-            f"[bold {SF_BLUE}]🥷  Fresh start[/]  [dim]Task list, requirements, and conversation cleared.[/]",
-            style=SF_BLUE,
-        ))
+        console.print(
+            Rule(
+                f"[bold {SF_BLUE}]🥷  Fresh start[/]  [dim]Task list, requirements, and conversation cleared.[/]",
+                style=SF_BLUE,
+            )
+        )
         console.print()
 
     def _cmd_history(self, _: list[str]) -> None:
@@ -611,11 +751,16 @@ class SnowNinjaShell:
             console.print("[dim]No history yet.[/]")
             return
         for i, msg in enumerate(self.history):
-            role = "[bold cyan]You[/]" if msg["role"] == "user" else "[bold green]SnowNinja[/]"
-            console.print(f"[dim]{i+1}.[/] {role}: {msg['content'][:200]}...")
+            role = (
+                "[bold cyan]You[/]"
+                if msg["role"] == "user"
+                else "[bold green]SnowNinja[/]"
+            )
+            console.print(f"[dim]{i + 1}.[/] {role}: {msg['content'][:200]}...")
 
     def _cmd_scaffold(self, parts: list[str]) -> None:
         from snowninja.scaffold.engine import ScaffoldEngine
+
         template = parts[1] if len(parts) > 1 else None
         engine = ScaffoldEngine()
         engine.run(template)
@@ -624,22 +769,51 @@ class SnowNinjaShell:
         parts = raw.strip().split()
         cmd = parts[0].lower()
 
-        if cmd == "/help":                   self._cmd_help(parts); return True
-        if cmd in MODES:                     self._cmd_mode(parts); return True
-        if cmd in ("/plan", "/implement", "/explore",
-                   "/operate", "/govern", "/cost"): self._cmd_mode(parts); return True
-        if cmd == "/models":                 self._cmd_models(parts); return True
-        if cmd == "/tasks":                  self._cmd_tasks(parts); return True
-        if cmd == "/skills":                 self._cmd_skills(parts); return True
-        if cmd == "/interview":              self._cmd_interview(parts); return True
-        if cmd == "/go":                     self._cmd_go(parts); return True
-        if cmd == "/new":                    self._cmd_new(parts); return True
-        if cmd == "/connection":             self._cmd_connection(parts); return True
-        if cmd == "/tools":                  self._cmd_tools(parts); return True
-        if cmd == "/model":                  self._cmd_set_model(parts); return True
-        if cmd == "/clear":                  self._cmd_clear(parts); return True
-        if cmd == "/history":                self._cmd_history(parts); return True
-        if cmd == "/scaffold":               self._cmd_scaffold(parts); return True
+        if cmd == "/help":
+            self._cmd_help(parts)
+            return True
+        if cmd in MODES:
+            self._cmd_mode(parts)
+            return True
+        if cmd in ("/plan", "/implement", "/explore", "/operate", "/govern", "/cost"):
+            self._cmd_mode(parts)
+            return True
+        if cmd == "/models":
+            self._cmd_models(parts)
+            return True
+        if cmd == "/tasks":
+            self._cmd_tasks(parts)
+            return True
+        if cmd == "/skills":
+            self._cmd_skills(parts)
+            return True
+        if cmd == "/interview":
+            self._cmd_interview(parts)
+            return True
+        if cmd == "/go":
+            self._cmd_go(parts)
+            return True
+        if cmd == "/new":
+            self._cmd_new(parts)
+            return True
+        if cmd == "/connection":
+            self._cmd_connection(parts)
+            return True
+        if cmd == "/tools":
+            self._cmd_tools(parts)
+            return True
+        if cmd == "/model":
+            self._cmd_set_model(parts)
+            return True
+        if cmd == "/clear":
+            self._cmd_clear(parts)
+            return True
+        if cmd == "/history":
+            self._cmd_history(parts)
+            return True
+        if cmd == "/scaffold":
+            self._cmd_scaffold(parts)
+            return True
         if cmd in ("/quit", "/exit"):
             console.print("\n[dim]Goodbye. 🥷[/]\n")
             raise SystemExit(0)
@@ -653,11 +827,14 @@ class SnowNinjaShell:
         from snowninja.llm.nim_client import ModelRole
 
         client = self._get_nim_client()
-        role = ModelRole.PLANNER if self.model_role == "planner" else ModelRole.IMPLEMENTER
+        role = (
+            ModelRole.PLANNER if self.model_role == "planner" else ModelRole.IMPLEMENTER
+        )
 
         model_short = (
-            session.config.planner_model if self.model_role == "planner"
-            else session.config.implementer_model
+            session.get_active_model("planner")
+            if self.model_role == "planner"
+            else session.get_active_model("implementer")
         ).split("/")[-1]
 
         console.print(f"\n[bold {SF_BLUE}]❯[/] [white]{user_input}[/]")
@@ -669,21 +846,27 @@ class SnowNinjaShell:
             errors: list[str] = []
             last_tool: str = "tool"
 
-            spinner = Spinner("dots", text=f"  Calling {model_short}…", style=f"bold {SF_BLUE}")
+            spinner = Spinner(
+                "dots", text=f"  Calling {model_short}…", style=f"bold {SF_BLUE}"
+            )
             iteration_count = 0
             with Live(spinner, console=console, refresh_per_second=12, transient=True):
                 async for event_type, data in client.agent_chat(user_input, role=role):
                     if event_type == "tool_call" or event_type == "text":
                         iteration_count += 1
-                        
-                    budget_str = f"[[dim]{iteration_count}[/]/[bold]{session.max_iterations}[/]]"
+
+                    budget_str = (
+                        f"[[dim]{iteration_count}[/]/[bold]{session.max_iterations}[/]]"
+                    )
 
                     if event_type == "tool_call":
                         fn_name, fn_args = data
                         last_tool = fn_name
-                        args_str = ", ".join(
-                            f'{k}="{v}"' for k, v in fn_args.items()
-                        ) if fn_args else ""
+                        args_str = (
+                            ", ".join(f'{k}="{v}"' for k, v in fn_args.items())
+                            if fn_args
+                            else ""
+                        )
                         spinner.text = f"  {budget_str} 🔧 {fn_name}({args_str})…"
 
                     elif event_type == "tool_result":
@@ -713,7 +896,7 @@ class SnowNinjaShell:
                         model_short = new_short
                         spinner.text = f"  {budget_str} ⚡ Switching to {new_short}…"
                         console.print(
-                            f"  [bold {SF_YELLOW}]⚡ Fallback:[/] [dim]overloaded → switching to[/] "
+                            f"  [bold {SF_YELLOW}]⚡ Fallback:[/] [dim]switching to[/] "
                             f"[bold {SF_BLUE_L}]{data}[/]"
                         )
 
@@ -725,7 +908,9 @@ class SnowNinjaShell:
                         errors.append(data)
 
             for err in errors:
-                console.print(Panel(f"[red]{err}[/]", title="[red]Error[/]", border_style="red"))
+                console.print(
+                    Panel(f"[red]{err}[/]", title="[red]Error[/]", border_style="red")
+                )
 
             if response_text:
                 console.print()
@@ -740,7 +925,7 @@ class SnowNinjaShell:
                             f"[dim]— switch to [yellow]/implement[/] and the Implementer will pick it up[/]"
                         )
                     except IndexError:
-                        pass # Safety check in case splitting fails
+                        pass  # Safety check in case splitting fails
 
             self.history.append({"role": "user", "content": user_input})
             self.history.append({"role": "assistant", "content": response_text})
@@ -748,12 +933,13 @@ class SnowNinjaShell:
         try:
             self._loop.run_until_complete(_run())
         except Exception as exc:
-            import os, traceback
-            console.print(Panel(
-                f"[red]{type(exc).__name__}:[/] {exc}",
-                title="[bold red]⚠ Agent Error[/]",
-                border_style="red",
-            ))
+            console.print(
+                Panel(
+                    f"[red]{type(exc).__name__}:[/] {exc}",
+                    title="[bold red]⚠ Agent Error[/]",
+                    border_style="red",
+                )
+            )
             if os.environ.get("SNOWNINJA_DEBUG"):
                 traceback.print_exc()
         console.print()
@@ -792,10 +978,14 @@ class SnowNinjaShell:
             try:
                 if session.interview_mode:
                     placeholder_text = f"<style fg='{SF_TEXT}'>Answer the question above, or type /go to generate task list…</style>"
-                    prompt_prefix = HTML(f"<style fg='{SF_BLUE}' bold='true'>🎙️ </style>")
+                    prompt_prefix = HTML(
+                        f"<style fg='{SF_BLUE}' bold='true'>🎙️ </style>"
+                    )
                 else:
                     placeholder_text = f"<style fg='{SF_TEXT}'>Ask anything, or type / for commands…</style>"
-                    prompt_prefix = HTML(f"<style fg='{SF_BLUE}' bold='true'>❯ </style>")
+                    prompt_prefix = HTML(
+                        f"<style fg='{SF_BLUE}' bold='true'>❯ </style>"
+                    )
 
                 user_input = session_pt.prompt(
                     prompt_prefix,
@@ -811,7 +1001,9 @@ class SnowNinjaShell:
             if user_input.startswith("/"):
                 handled = self._dispatch_slash(user_input)
                 if not handled:
-                    console.print(f"[{SF_BLUE}]Unknown command:[/] {user_input}  — type [bold {SF_YELLOW}]/help[/] for a list.")
+                    console.print(
+                        f"[{SF_BLUE}]Unknown command:[/] {user_input}  — type [bold {SF_YELLOW}]/help[/] for a list."
+                    )
                 continue
 
             try:
@@ -822,15 +1014,17 @@ class SnowNinjaShell:
             except KeyboardInterrupt:
                 console.print(f"\n[{SF_YELLOW}]Interrupted.[/]")
             except Exception as exc:
-                import os, traceback
-                console.print(Panel(
-                    f"[red]{type(exc).__name__}:[/] {exc}\n\n"
-                    f"[dim]Set [bold]SNOWNINJA_DEBUG=1[/] and retry for full traceback.[/]",
-                    title="[bold red]⚠ Unexpected Error[/]",
-                    border_style="red",
-                ))
+                console.print(
+                    Panel(
+                        f"[red]{type(exc).__name__}:[/] {exc}\n\n"
+                        f"[dim]Set [bold]SNOWNINJA_DEBUG=1[/] and retry for full traceback.[/]",
+                        title="[bold red]⚠ Unexpected Error[/]",
+                        border_style="red",
+                    )
+                )
                 if os.environ.get("SNOWNINJA_DEBUG"):
                     traceback.print_exc()
+
 
 def main():
     try:
@@ -838,9 +1032,11 @@ def main():
         shell.run()
     except Exception as e:
         import traceback
+
         console.print(f"[red]Fatal Error:[/] {e}")
         traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

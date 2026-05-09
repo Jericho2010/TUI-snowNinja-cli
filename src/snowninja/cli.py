@@ -7,7 +7,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
 
-from snowninja.core.config import SnowNinjaConfig, save_config, load_config
+from snowninja.core.config import SnowNinjaConfig, save_config
 from snowninja.session import session
 
 app = typer.Typer(

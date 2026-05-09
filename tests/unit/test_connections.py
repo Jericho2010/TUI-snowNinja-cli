@@ -1,5 +1,3 @@
-import pytest
-from pathlib import Path
 from snowninja.core.connections import list_profiles
 
 def test_list_profiles_parses_toml(tmp_path, monkeypatch):

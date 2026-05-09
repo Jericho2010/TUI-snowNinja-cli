@@ -64,6 +64,9 @@ git clone https://github.com/Jericho2010/TUI-snowNinja-cli.git
 cd TUI-snowNinja-cli
 ./setup.sh
 
+# Optional: seed local environment variables
+cp .env.example .env
+
 # 2. Configure Credentials
 snowninja setup
 
@@ -76,13 +79,29 @@ snowninja
 
 ---
 
+## 🛠️ Development Workflow
+
+```bash
+make test
+make lint
+make format
+```
+
+- `.env.example` documents the expected Snowflake and NVIDIA environment variables.
+- `.pre-commit-config.yaml` runs the same Ruff and file hygiene checks before commit.
+- CI now runs lint plus the unit and CLI test suites on pushes and pull requests.
+
+---
+
 ## 💎 Feature Matrix
 
 | Feature | Description | Status |
 | :--- | :--- | :--- |
 | **Dual-Lane Loop** | Separate Planner/Implementer lanes for architectural rigor. | ✅ Production |
 | **Resilient NIM Client** | Auto-fallback chain (Llama → Mistral → Qwen) for 100% uptime. | ✅ Production |
+| **Runtime Model Visibility** | Toolbar and `/models` reflect the currently active lane model after fallback. | ✅ Production |
 | **Snowflake Action Tools** | 45+ built-in tools for UC, Cortex, Warehouses, and Pipelines. | ✅ Production |
+| **Governance Guardrails** | Blocks critical Snowflake mutations and oversized warehouse changes before execution. | ✅ Production |
 | **Interactive Interview** | `/interview` mode for guided requirements gathering. | ✅ Production |
 | **Dynamic Skill Router** | RAG-style injection of domain-specific Snowflake guides. | ✅ Production |
 | **Project Scaffolding** | `/scaffold` for instantly creating Medallion/Snowpark repos. | ✅ Production |
@@ -104,6 +123,7 @@ SnowNinja is designed with a **"Private by Design"** architecture:
 - **No Hardcoded Secrets**: Your Snowflake credentials and NVIDIA API keys are never stored in this repository.
 - **Local Persistence**: All sensitive data is stored in `~/.snowninja/config.yaml` on your local machine.
 - **Safe Execution**: Local shell commands are gated by a strict allowlist.
+- **Governance Enforcement**: Critical SQL such as `DROP DATABASE`, `DROP SHARE`, `ALTER TABLE ... DROP COLUMN`, `REVOKE ALL`, and warehouse sizes above `X-LARGE` are blocked before execution.
 
 For more details, see [SECURITY.md](SECURITY.md).
 

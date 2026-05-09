@@ -1,5 +1,3 @@
-import os
-import json
 import re
 import subprocess
 from contextlib import contextmanager
@@ -44,12 +42,21 @@ class ToolsCore:
         finally:
             cs.close()
 
-    def _execute_query(self, sql: str, params: Optional[tuple] = None) -> List[Dict[str, Any]]:
+    def _execute_query(
+        self, sql: str, params: Optional[tuple] = None
+    ) -> List[Dict[str, Any]]:
         """Helper to execute SQL and return results as a list of dicts."""
-        from snowninja.governance.policies import check_query_safety
+        from snowninja.governance.policies import evaluate_query_policy
 
-        if not check_query_safety(sql):
-            return [{"status": "blocked", "message": "Query blocked by governance policy"}]
+        policy = evaluate_query_policy(sql)
+        if not policy.allowed:
+            return [
+                {
+                    "status": "blocked",
+                    "message": f"Query blocked by governance policy: {policy.reason}",
+                    "action_class": policy.action_class.value,
+                }
+            ]
 
         with self._cursor() as cs:
             cs.execute("ALTER SESSION SET QUERY_TAG = 'snowninja_agent'")
@@ -104,9 +111,7 @@ class ToolsCore:
         return self._execute_query(f"SHOW OBJECTS LIKE '%{safe_keyword}%'")
 
     def get_table_ddl(self, table_name: str) -> str:
-        res = self._execute_query(
-            "SELECT GET_DDL('TABLE', ?) AS DDL", (table_name,)
-        )
+        res = self._execute_query("SELECT GET_DDL('TABLE', ?) AS DDL", (table_name,))
         return res[0].get("DDL", "") if res else ""
 
     # --- SQL Domain (3) ---
@@ -158,14 +163,12 @@ class ToolsCore:
 
     # --- Data Eng Domain (8) ---
     def create_database(self, name: str) -> Dict[str, Any]:
-        return self._execute_query(
-            f"CREATE DATABASE IF NOT EXISTS {_quote_id(name)}"
-        )[0]
+        return self._execute_query(f"CREATE DATABASE IF NOT EXISTS {_quote_id(name)}")[
+            0
+        ]
 
     def create_schema(self, name: str) -> Dict[str, Any]:
-        return self._execute_query(
-            f"CREATE SCHEMA IF NOT EXISTS {_quote_id(name)}"
-        )[0]
+        return self._execute_query(f"CREATE SCHEMA IF NOT EXISTS {_quote_id(name)}")[0]
 
     def create_table(self, name: str, columns: str) -> Dict[str, Any]:
         # Note: columns DDL comes from the LLM and is validated before execution
@@ -176,15 +179,24 @@ class ToolsCore:
     def drop_object(self, object_type: str, name: str) -> Dict[str, Any]:
         # Only allow known safe object types to limit blast radius
         allowed_types = {
-            "TABLE", "VIEW", "SCHEMA", "WAREHOUSE", "STAGE",
-            "TASK", "STREAM", "PIPE", "PROCEDURE", "FUNCTION",
+            "TABLE",
+            "VIEW",
+            "SCHEMA",
+            "WAREHOUSE",
+            "STAGE",
+            "TASK",
+            "STREAM",
+            "PIPE",
+            "PROCEDURE",
+            "FUNCTION",
         }
         obj_upper = object_type.upper()
         if obj_upper not in allowed_types:
-            return {"status": "blocked", "message": f"DROP {object_type} is not permitted."}
-        return self._execute_query(
-            f"DROP {obj_upper} IF EXISTS {_quote_id(name)}"
-        )[0]
+            return {
+                "status": "blocked",
+                "message": f"DROP {object_type} is not permitted.",
+            }
+        return self._execute_query(f"DROP {obj_upper} IF EXISTS {_quote_id(name)}")[0]
 
     def list_stages(self) -> List[Dict[str, Any]]:
         return self._execute_query("SHOW STAGES")
@@ -223,9 +235,7 @@ class ToolsCore:
         """
         # Build the categories array literal safely — categories are strings
         # from the LLM, so we escape single-quotes
-        safe_cats = ", ".join(
-            "'" + c.replace("'", "''") + "'" for c in categories
-        )
+        safe_cats = ", ".join("'" + c.replace("'", "''") + "'" for c in categories)
         sql = f"SELECT SNOWFLAKE.CORTEX.CLASSIFY_TEXT(?, ARRAY_CONSTRUCT({safe_cats})) AS RESULT"
         try:
             res = self._execute_query(sql, (text,))
@@ -244,22 +254,34 @@ class ToolsCore:
     def list_roles(self) -> List[Dict[str, Any]]:
         return self._execute_query("SHOW ROLES")
 
-    def show_grants_on(self, object_type: str, object_name: str) -> List[Dict[str, Any]]:
+    def show_grants_on(
+        self, object_type: str, object_name: str
+    ) -> List[Dict[str, Any]]:
         allowed_types = {
-            "TABLE", "VIEW", "SCHEMA", "DATABASE", "WAREHOUSE",
-            "STAGE", "PROCEDURE", "FUNCTION", "ROLE",
+            "TABLE",
+            "VIEW",
+            "SCHEMA",
+            "DATABASE",
+            "WAREHOUSE",
+            "STAGE",
+            "PROCEDURE",
+            "FUNCTION",
+            "ROLE",
         }
         obj_upper = object_type.upper()
         if obj_upper not in allowed_types:
-            return [{"status": "blocked", "message": f"SHOW GRANTS ON {object_type} not permitted."}]
+            return [
+                {
+                    "status": "blocked",
+                    "message": f"SHOW GRANTS ON {object_type} not permitted.",
+                }
+            ]
         return self._execute_query(
             f"SHOW GRANTS ON {obj_upper} {_quote_id(object_name)}"
         )
 
     def show_grants_to(self, role_name: str) -> List[Dict[str, Any]]:
-        return self._execute_query(
-            f"SHOW GRANTS TO ROLE {_quote_id(role_name)}"
-        )
+        return self._execute_query(f"SHOW GRANTS TO ROLE {_quote_id(role_name)}")
 
     def list_tags(self) -> List[Dict[str, Any]]:
         return self._execute_query("SHOW TAGS")
@@ -281,7 +303,12 @@ class ToolsCore:
         try:
             return self._execute_query(sql)
         except Exception as e:
-            return [{"status": "error", "message": f"Must have IMPORTED PRIVILEGES on SNOWFLAKE db: {e}"}]
+            return [
+                {
+                    "status": "error",
+                    "message": f"Must have IMPORTED PRIVILEGES on SNOWFLAKE db: {e}",
+                }
+            ]
 
     def get_storage_usage(self) -> List[Dict[str, Any]]:
         try:
@@ -289,7 +316,12 @@ class ToolsCore:
                 "SELECT * FROM snowflake.account_usage.storage_usage ORDER BY usage_date DESC LIMIT 30"
             )
         except Exception as e:
-            return [{"status": "error", "message": f"Must have IMPORTED PRIVILEGES on SNOWFLAKE db: {e}"}]
+            return [
+                {
+                    "status": "error",
+                    "message": f"Must have IMPORTED PRIVILEGES on SNOWFLAKE db: {e}",
+                }
+            ]
 
     def get_login_history(self, limit: int = 10) -> List[Dict[str, Any]]:
         return self._execute_query(
@@ -298,7 +330,9 @@ class ToolsCore:
         )
 
     # --- Local Domain (3) ---
-    def write_local_file(self, file_path: str, content: str, overwrite: bool = False) -> Dict[str, Any]:
+    def write_local_file(
+        self, file_path: str, content: str, overwrite: bool = False
+    ) -> Dict[str, Any]:
         p = Path(file_path)
         if p.exists() and not overwrite:
             return {"status": "skipped", "message": "File exists and overwrite=False"}
@@ -334,7 +368,11 @@ class ToolsCore:
             result = subprocess.run(
                 command, shell=True, capture_output=True, text=True, check=True
             )
-            return {"status": "success", "stdout": result.stdout, "stderr": result.stderr}
+            return {
+                "status": "success",
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+            }
         except subprocess.CalledProcessError as e:
             return {
                 "status": "error",

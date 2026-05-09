@@ -1,5 +1,3 @@
-import pytest
-from pathlib import Path
 from snowninja.skills.router import skill_router, SKILL_MAP, SKILLS_DIR
 
 def test_route_dynamic_tables():

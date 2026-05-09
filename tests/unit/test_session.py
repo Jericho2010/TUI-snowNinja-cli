@@ -1,4 +1,3 @@
-import pytest
 from snowninja.session import SessionManager
 
 def test_session_defaults():

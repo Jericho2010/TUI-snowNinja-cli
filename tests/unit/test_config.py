@@ -1,7 +1,4 @@
-import os
-from pathlib import Path
-import pytest
-from snowninja.core.config import SnowNinjaConfig, load_config, save_config, CONFIG_FILE
+from snowninja.core.config import SnowNinjaConfig, load_config, save_config
 
 def test_config_defaults():
     """SnowNinjaConfig has sane defaults."""

@@ -1,5 +1,3 @@
-import pytest
-from pathlib import Path
 from snowninja.actions.tools_core import ToolsCore
 from snowninja.llm.nim_client import SNOWFLAKE_TOOLS, TOOL_DISPATCH
 
