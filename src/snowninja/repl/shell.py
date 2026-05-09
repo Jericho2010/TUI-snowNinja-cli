@@ -647,7 +647,8 @@ class SnowNinjaShell:
         else:
             skills_dir = Path(__file__).parent.parent / "skills"
             lines = []
-            for f in sorted(skills_dir.glob("*.md")):
+            for skill_name in skill_router.skill_names():
+                f = skills_dir / f"{skill_name}.md"
                 text = f.read_text(encoding="utf-8")
                 m = re.search(r'description:\s*["\']?(.+?)["\']?\s*\n', text)
                 desc = m.group(1)[:90] if m else ""

@@ -39,7 +39,13 @@ SKILL_MAP: dict[str, list[str]] = {
     ],
     "snowflake-native-apps": [
         "native app", "app package", "application role", "provider",
-        "consumer", "manifest.yml", "setup script",
+        "consumer", "manifest.yml", "setup script", "application package",
+        "application specification", "versioned schema",
+    ],
+    "snowflake-streamlit": [
+        "streamlit", "streamlit in snowflake", "sis", "streamlit app",
+        "snow streamlit", "st.write", "st.dataframe", "st.sidebar",
+        "get_active_session", "snowflake.yml",
     ],
     "snowflake-security": [
         "role", "grant", "masking policy", "row access policy", "rbac",
@@ -69,6 +75,20 @@ SKILL_MAP: dict[str, list[str]] = {
         "udf", "udtf", "snowpark", "python", "stored procedure",
         "vectorized udf", "handler", "packages",
     ],
+    "snowflake-alerts": [
+        "alert", "snowflake alert", "system$send_email", "send_email",
+        "notification integration", "email notification", "condition_query",
+        "scheduled alert",
+    ],
+    "snowflake-query-performance": [
+        "query profile", "slow query", "search optimization", "result cache",
+        "query acceleration", "spilling", "clustering key", "explain plan",
+        "query history", "warehouse queuing", "active_warehouse_load",
+    ],
+    "snowflake-devops": [
+        "snow cli", "snow sql", "snow object", "schemachange", "ci/cd",
+        "snowflake cli", "deploy script", "definition_version", "snow streamlit deploy",
+    ],
 }
 
 
@@ -78,16 +98,20 @@ class SkillRouter:
     No LLM call, no latency. O(skills × keywords) per message.
     """
 
+    def _keyword_matches(self, keyword: str, message: str) -> bool:
+        """Match a keyword/phrase without false positives like stream -> streamlit."""
+        pattern = rf"(?<!\w){re.escape(keyword.lower())}(?!\w)"
+        return re.search(pattern, message.lower()) is not None
+
     def route(self, message: str, max_skills: int = 2) -> list[str]:
         """
         Return a list of skill names (up to max_skills) that match the message.
         Scored by number of keyword hits — highest scoring skills win.
         """
-        msg_lower = message.lower()
         scores: dict[str, int] = {}
 
         for skill, keywords in SKILL_MAP.items():
-            hits = sum(1 for kw in keywords if kw in msg_lower)
+            hits = sum(1 for kw in keywords if self._keyword_matches(kw, message))
             if hits > 0:
                 scores[skill] = scores.get(skill, 0) + hits
 
@@ -102,6 +126,10 @@ class SkillRouter:
             if len(result) >= max_skills:
                 break
         return result
+
+    def skill_names(self) -> list[str]:
+        """Return the canonical, routable skill names."""
+        return sorted(SKILL_MAP.keys())
 
     def load_skill(self, skill_name: str) -> str | None:
         """Load full vendored skill content (already truncated at copy time)."""
@@ -180,8 +208,8 @@ class SkillRouter:
         Injected when no specific skill is matched, so the LLM knows what's available.
         """
         lines = ["Available Snowflake skill guides (use /skills <name> to view):"]
-        for skill_file in sorted(SKILLS_DIR.glob("*.md")):
-            name = skill_file.stem
+        for name in self.skill_names():
+            skill_file = SKILLS_DIR / f"{name}.md"
             # Read description from frontmatter
             text = skill_file.read_text(encoding="utf-8")
             m = re.search(r'description:\s*["\']?(.+?)["\']?\s*\n', text)

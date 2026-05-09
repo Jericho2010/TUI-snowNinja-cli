@@ -10,6 +10,31 @@ def test_route_cortex():
     res = skill_router.route("can I use cortex to summarize text?")
     assert "snowflake-cortex-ai" in res
 
+def test_route_streamlit():
+    """'build a streamlit app' matches snowflake-streamlit."""
+    res = skill_router.route("help me build a streamlit app in snowflake")
+    assert "snowflake-streamlit" in res
+
+def test_route_streamlit_not_confused_with_streams():
+    """'streamlit' should not false-match the streams/tasks skill."""
+    res = skill_router.route("streamlit in snowflake dashboard")
+    assert "snowflake-streams-tasks" not in res
+
+def test_route_alerts():
+    """'send email alert' matches snowflake-alerts."""
+    res = skill_router.route("create a snowflake alert using system$send_email")
+    assert "snowflake-alerts" in res
+
+def test_route_query_performance():
+    """'slow query' matches snowflake-query-performance."""
+    res = skill_router.route("help me troubleshoot a slow query with query profile")
+    assert "snowflake-query-performance" in res
+
+def test_route_devops():
+    """'snow cli deploy' matches snowflake-devops."""
+    res = skill_router.route("use snow cli to deploy with definition_version")
+    assert "snowflake-devops" in res
+
 def test_route_no_match():
     """'hello world' returns empty list."""
     res = skill_router.route("hello world")
@@ -43,10 +68,17 @@ def test_load_critical_rules():
         assert len(res) < len(full)
 
 def test_skill_index_lists_all():
-    """skill_index() mentions all 12 skill names."""
+    """skill_index() mentions all routable skill names."""
     idx = skill_router.skill_index()
     for skill in SKILL_MAP.keys():
         assert skill in idx
+
+def test_skill_index_only_lists_routable_skills():
+    """skill_index() should not include orphan docs that are not in SKILL_MAP."""
+    idx = skill_router.skill_index()
+    for md_file in SKILLS_DIR.glob("*.md"):
+        if md_file.stem not in SKILL_MAP:
+            assert md_file.stem not in idx
 
 def test_all_skill_files_have_frontmatter():
     """Every .md file in skills/ has name: and description: in YAML frontmatter."""
