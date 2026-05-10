@@ -346,11 +346,15 @@ class SnowNinjaShell:
                 "DEFAULT",
                 "Qwen 3 Coder · 480B · SOTA Coding",
             ),
-            ("z-ai/glm-5.1", "FALLBACK", "GLM 5.1 · Next-Gen Agentic"),
             (
-                "mistralai/devstral-2-123b-instruct-2512",
+                "deepseek-ai/deepseek-v4-flash",
                 "FALLBACK",
-                "Devstral 2 · High Fidelity Logic",
+                "DeepSeek V4 Flash · Fast verified implementer fallback",
+            ),
+            (
+                "mistralai/mistral-small-4-119b-2603",
+                "FALLBACK",
+                "Mistral Small 4 · Reliable mid-tier implementer",
             ),
             (
                 "deepseek-ai/deepseek-v4-pro",

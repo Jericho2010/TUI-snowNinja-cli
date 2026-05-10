@@ -752,8 +752,8 @@ class NimClient:
         else:  # IMPLEMENTER
             return [
                 NimModel.QWEN_3_CODER.value,
-                NimModel.GLM_5_1.value,
-                NimModel.DEVSTRAL_2.value,
+                NimModel.DEEPSEEK_V4_FLASH.value,
+                NimModel.MISTRAL_SMALL_4.value,
                 NimModel.DEEPSEEK_V4_PRO.value,
             ]
 

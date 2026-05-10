@@ -64,6 +64,17 @@ def test_implementer_fallback_chain_is_non_empty():
     assert len(client.get_fallback_chain(ModelRole.IMPLEMENTER)) >= 2
 
 
+def test_implementer_fallback_chain_prefers_working_models():
+    client = NimClient()
+    chain = client.get_fallback_chain(ModelRole.IMPLEMENTER)
+    assert chain == [
+        NimModel.QWEN_3_CODER.value,
+        NimModel.DEEPSEEK_V4_FLASH.value,
+        NimModel.MISTRAL_SMALL_4.value,
+        NimModel.DEEPSEEK_V4_PRO.value,
+    ]
+
+
 @pytest.mark.asyncio
 async def test_agent_chat_walks_full_fallback_chain_on_error():
     """

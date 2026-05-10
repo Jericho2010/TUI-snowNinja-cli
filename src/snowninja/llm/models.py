@@ -9,15 +9,13 @@ class NimModel(str, Enum):
 
     # Coding / Implementer Models (The Builders)
     QWEN_3_CODER = "qwen/qwen3-coder-480b-a35b-instruct"
-    GLM_5_1 = "z-ai/glm-5.1"
-    DEVSTRAL_2 = "mistralai/devstral-2-123b-instruct-2512"
+    DEEPSEEK_V4_FLASH = "deepseek-ai/deepseek-v4-flash"
+    MISTRAL_SMALL_4 = "mistralai/mistral-small-4-119b-2603"
     DEEPSEEK_V4_PRO = "deepseek-ai/deepseek-v4-pro"
 
     # Specialized Tiers (v3+ only)
     KIMI_2_6 = "moonshotai/kimi-k2.6"
     KIMI_THINKING = "moonshotai/kimi-k2-thinking"
-    DEEPSEEK_V4_FLASH = "deepseek-ai/deepseek-v4-flash"
-    MISTRAL_SMALL_4 = "mistralai/mistral-small-4-119b-2603"
 
 class ModelRole(str, Enum):
     PLANNER = "planner"

@@ -69,7 +69,7 @@ flowchart TD
 
     subgraph IMPL ["⚙️ Implementer Lane  /implement"]
         IM["qwen-2.5-coder-32b\n★ DEFAULT · best coder"]:::model
-        IM2["devstral-2 / deepseek-v4-pro\nalternatives"]:::model
+        IM2["deepseek-v4-flash / mistral-small-4 / deepseek-v4-pro\nalternatives"]:::model
     end
 
     subgraph SHARED ["🔗 Shared Session State"]
