@@ -77,6 +77,7 @@ def test_status_text_builds_rich_text_without_markup_tags():
 
     assert isinstance(status, Text)
     assert status.plain == "  [1/20] Calling qwen…"
+    assert status.spans == []
     assert "[dim]" not in status.plain
     assert "[bold]" not in status.plain
 

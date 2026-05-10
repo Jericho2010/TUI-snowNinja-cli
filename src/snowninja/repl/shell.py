@@ -111,15 +111,8 @@ MODES = {
 
 
 def _status_text(iteration_count: int, max_iterations: int, message: str) -> Text:
-    """Build spinner text without relying on inline markup parsing."""
-    status = Text("  ")
-    status.append("[", style="dim")
-    status.append(str(iteration_count), style="dim")
-    status.append("/")
-    status.append(str(max_iterations), style="bold")
-    status.append("]", style="dim")
-    status.append(f" {message}")
-    return status
+    """Build spinner text as a single plain Text object for stable Live rendering."""
+    return Text(f"  [{iteration_count}/{max_iterations}] {message}")
 
 
 class SlashCompleter(Completer):
