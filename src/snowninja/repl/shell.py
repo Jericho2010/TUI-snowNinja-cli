@@ -265,6 +265,14 @@ class SnowNinjaShell:
         self.mode_color = color
         return True
 
+    def _build_implementer_handoff_prompt(self) -> str:
+        return (
+            "Start now. Execute the current task list from the top using the saved "
+            "requirements and task list in your context. Begin with the first "
+            "unchecked task, keep working until you are blocked or the task list is "
+            "complete, and report any blocker precisely."
+        )
+
     # ─────────────────────────────────────
     # Slash command handlers
     # ─────────────────────────────────────
@@ -558,7 +566,6 @@ class SnowNinjaShell:
             console.print()
 
             if event_type_final == "interview_complete":
-                session.interview_mode = False
                 req_text = ""
                 task_text = ""
 
@@ -572,6 +579,8 @@ class SnowNinjaShell:
 
                 session.requirements = req_text
                 session.task_list = task_text
+                session.reset_interview()
+                self._set_mode("implement")
 
                 # Dynamic iteration budget extraction
                 # Permissive regex: handles "## Estimated Iterations\n15",
@@ -596,8 +605,9 @@ class SnowNinjaShell:
                 )
                 console.print()
                 console.print(
-                    f"  [bold {SF_YELLOW}]✓ Task list saved.[/] "
-                    f"[dim]Switch to [yellow]/implement[/] — the Implementer will pick it up automatically.[/]"
+                    f"  [bold {SF_YELLOW}]✓ Handover ready.[/] "
+                    f"[dim]Implementer mode is active — type [bold {SF_YELLOW}]start[/] to execute the task list, "
+                    f"or [yellow]/tasks[/] to review it.[/]"
                 )
 
             elif event_type_final == "interview_ready":
@@ -787,9 +797,27 @@ class SnowNinjaShell:
             return True
         if cmd in MODES:
             self._cmd_mode(parts)
+            inline_prompt = " ".join(parts[1:]).strip()
+            if inline_prompt:
+                if (
+                    self.model_role == "implementer"
+                    and session.task_list
+                    and inline_prompt.lower() == "start"
+                ):
+                    inline_prompt = self._build_implementer_handoff_prompt()
+                self._run_agent(inline_prompt)
             return True
         if cmd in ("/plan", "/implement", "/explore", "/operate", "/govern", "/cost"):
             self._cmd_mode(parts)
+            inline_prompt = " ".join(parts[1:]).strip()
+            if inline_prompt:
+                if (
+                    self.model_role == "implementer"
+                    and session.task_list
+                    and inline_prompt.lower() == "start"
+                ):
+                    inline_prompt = self._build_implementer_handoff_prompt()
+                self._run_agent(inline_prompt)
             return True
         if cmd == "/models":
             self._cmd_models(parts)
@@ -1006,13 +1034,26 @@ class SnowNinjaShell:
                 user_input = session_pt.prompt(
                     prompt_prefix,
                     placeholder=HTML(placeholder_text),
-                ).strip()
+                )
             except (KeyboardInterrupt, EOFError):
                 console.print(f"\n[dim {SF_TEXT}]Goodbye. 🥷[/]\n")
                 break
 
+            if user_input is None:
+                console.print(f"\n[dim {SF_TEXT}]Goodbye. 🥷[/]\n")
+                break
+
+            user_input = user_input.strip()
+
             if not user_input:
                 continue
+
+            if (
+                self.model_role == "implementer"
+                and session.task_list
+                and user_input.lower() == "start"
+            ):
+                user_input = self._build_implementer_handoff_prompt()
 
             if user_input.startswith("/"):
                 handled = self._dispatch_slash(user_input)

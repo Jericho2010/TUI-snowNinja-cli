@@ -87,3 +87,41 @@ def test_spinner_updates_accept_status_text_objects():
 
     assert isinstance(spinner.text, Text)
     assert spinner.text.plain == "  [1/20] 🔧 search_objects()…"
+
+
+def test_start_handoff_prompt_is_used_in_implementer_mode(monkeypatch):
+    shell = SnowNinjaShell()
+    original_task_list = session.task_list
+    original_requirements = session.requirements
+
+    captured: list[str] = []
+
+    try:
+        session.task_list = "- [ ] Create the streamlit app"
+        session.requirements = "Secure data sharing"
+        shell._set_mode("implement")
+        monkeypatch.setattr(shell, "_run_agent", captured.append)
+
+        handled = shell._dispatch_slash("/implement start")
+
+        assert handled is True
+        assert captured == [shell._build_implementer_handoff_prompt()]
+    finally:
+        session.task_list = original_task_list
+        session.requirements = original_requirements
+
+
+def test_run_exits_cleanly_when_prompt_returns_none(monkeypatch):
+    shell = SnowNinjaShell()
+
+    class FakePromptSession:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def prompt(self, *args, **kwargs):
+            return None
+
+    monkeypatch.setattr("snowninja.repl.shell._print_splash", lambda: None)
+    monkeypatch.setattr("snowninja.repl.shell.PromptSession", FakePromptSession)
+
+    shell.run()

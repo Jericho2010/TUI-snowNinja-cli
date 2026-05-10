@@ -39,6 +39,13 @@ def test_interview_prompt_exists():
     assert "Snowflake" in INTERVIEW_SYSTEM_PROMPT
 
 
+def test_interview_prompt_requires_detailed_requirements_and_tasks():
+    assert "## Requirements" in INTERVIEW_SYSTEM_PROMPT
+    assert "## Task List" in INTERVIEW_SYSTEM_PROMPT
+    assert "4-8 tasks" in INTERVIEW_SYSTEM_PROMPT
+    assert "implementation-ready" in INTERVIEW_SYSTEM_PROMPT
+
+
 def test_tool_dispatch_matches_tools():
     """TOOL_DISPATCH keys == SNOWFLAKE_TOOLS function names."""
     tool_names = [t["function"]["name"] for t in SNOWFLAKE_TOOLS]
