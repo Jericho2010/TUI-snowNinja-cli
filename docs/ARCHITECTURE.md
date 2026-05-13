@@ -1,7 +1,7 @@
 # SnowNinja — Architecture Reference
 
 > **Living document.** Updated as the system evolves.
-> Last updated: 2026-05-07 · [← Back to README](../README.md)
+> Last updated: 2026-05-14 · [← Back to README](../README.md)
 
 ---
 
@@ -77,7 +77,7 @@ flowchart TD
         REQ["📝 session.requirements\n(from /interview)"]:::shared
     end
 
-    subgraph TOOLS ["🔧 Action Tools (45 total)"]
+    subgraph TOOLS ["🔧 Action Tools (40+ built-in)"]
         T1["Database Ops\ndbs · schemas · tables"]:::tool
         T2["Compute & SQL\nwarehouses · execute_sql"]:::tool
         T3["Cortex ML\ncomplete · summarize · sentiment"]:::tool
@@ -253,4 +253,4 @@ Full registry in `src/snowninja/actions/tools_core.py`.
 
 ---
 
-*Part of [SnowNinja](../README.md) — The Principal Architect's Shell.* 🥷❄️
+*Part of [SnowNinja](../README.md) — The Principal Architect’s Shell.* 🥷❄️

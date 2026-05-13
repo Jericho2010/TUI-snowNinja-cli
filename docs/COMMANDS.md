@@ -33,6 +33,18 @@ Switch to **Implementer Mode**. This uses coding-optimized models (Qwen 3 Coder 
 A semantic alias for the Implementer lane, optimized for read-only workspace inspection.
 - **Under the Hood**: Sets the mode to `explore` and model role to `implementer`. This allows the model to run `execute_sql` for data analysis without feeling forced to generate an architectural plan.
 
+### `/operate`
+Switch to **Operate Mode** for hands-on execution against Snowflake resources.
+- **Best for**: Running SQL, working through pipeline tasks, and carrying out live implementation work with an operational mindset.
+
+### `/govern`
+Switch to **Govern Mode** for security- and policy-oriented reasoning.
+- **Best for**: Roles, grants, access reviews, governance guardrails, and policy-aware planning.
+
+### `/cost`
+Switch to **Cost Mode** for warehouse and spend-aware reasoning.
+- **Best for**: Warehouse sizing, credit efficiency, and performance/cost trade-offs.
+
 ---
 
 ## 🎛 System & Configuration
@@ -51,6 +63,22 @@ Hot-swap a model for the current session.
 Display the current session's active plan.
 - **Subcommand**: `/tasks clear` — Wipes the task list and requirements from the session.
 
+### `/connection`
+Show the current Snowflake connection status.
+- **Output**: Active profile plus a live authentication check, including current user, role, and warehouse when available.
+
+### `/tools`
+List all loaded Snowflake action tools.
+- **Use this when**: You want to see the callable tool surface available to the harness at runtime.
+
+### `/skills [name]`
+List the loaded skill guides, or show the full content of one skill.
+- **Example**: `/skills snowflake-streamlit`
+
+### `/history`
+Show the current session's conversation history.
+- **Use this when**: You want to inspect what the active lane has already seen during the current shell session.
+
 ---
 
 ## 🏗 Project Scaffolding
@@ -58,9 +86,11 @@ Display the current session's active plan.
 ### `/scaffold <template>`
 Generate local project files from pre-defined Snowflake templates.
 - **Templates**:
-    - `medallion`: Bronze/Silver/Gold pipeline structure.
-    - `streamlit`: Streamlit in Snowflake (SiS) boilerplate.
-    - `snowpark`: Python-native Snowpark environment with `uv` support.
+    - `pipeline-project`: Dynamic Tables medallion pipeline starter.
+    - `app-project`: Streamlit in Snowflake application starter.
+    - `cortex-project`: Cortex AI document/LLM pipeline starter.
+    - `snowpark-project`: Snowpark Python UDF / stored procedure starter.
+- **Tip**: Run `/scaffold` with no argument to see the interactive scaffold menu.
 
 ---
 
@@ -68,10 +98,20 @@ Generate local project files from pre-defined Snowflake templates.
 
 - `/help`: Show all available commands.
 - `/new`: Hard reset. Clears history, tasks, requirements, and interview state.
-- `/doctor`: Run connection diagnostics (Snowflake auth + NIM API).
 - `/clear`: Clear conversation history only (keeps the task list).
 - `/quit`: Exit the shell.
+- `/exit`: Exit the shell.
 
 ---
 
-*Part of [SnowNinja](../README.md) — The Principal Architect's Shell.* 🥷❄️
+## 🧪 Non-Interactive CLI Commands
+
+These commands are run from your terminal, not inside the interactive shell:
+
+- `snowninja setup`: Configure Snowflake and NVIDIA credentials.
+- `snowninja doctor`: Run environment and connectivity diagnostics.
+- `snowninja`: Launch the interactive TUI shell.
+
+---
+
+*Part of [SnowNinja](../README.md) — The Principal Architect’s Shell.* 🥷❄️

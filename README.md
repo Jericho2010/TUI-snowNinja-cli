@@ -112,7 +112,7 @@ make format
 ## 📂 Documentation
 
 *   [**Architecture Reference**](docs/ARCHITECTURE.md): Deep-dive into the async loops, fallback chains, and tool integration.
-*   [**Command Manual**](docs/COMMANDS.md): Comprehensive guide to slash commands and TUI navigation.
+*   [**Command Manual**](docs/COMMANDS.md): Comprehensive guide to slash commands, shell workflows, and non-interactive CLI commands.
 *   [**Launch Strategy**](docs/LAUNCH_POST.md): Announcement template for high-engagement release.
 
 ---
