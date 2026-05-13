@@ -62,13 +62,13 @@ flowchart TD
     classDef local fill:#37474f,stroke:#90a4ae,color:#ccc
 
     subgraph PLANNER ["📐 Planner Lane  /plan"]
-        PM["llama-3.1-405b\n★ DEFAULT · 7s · 8/8"]:::model
+        PM["llama-4-maverick\n★ DEFAULT · reasoning"]:::model
         PF["mistral-large-3\nFALLBACK · reliable"]:::model
         PM -.->|"auto-fallback if overloaded"| PF
     end
 
     subgraph IMPL ["⚙️ Implementer Lane  /implement"]
-        IM["qwen-2.5-coder-32b\n★ DEFAULT · best coder"]:::model
+        IM["qwen3-coder-480b\n★ DEFAULT · best coder"]:::model
         IM2["deepseek-v4-flash / mistral-small-4 / deepseek-v4-pro\nalternatives"]:::model
     end
 
@@ -118,7 +118,7 @@ sequenceDiagram
     U->>R: Type message + Enter
     R->>SK: route(message) → skill match
     SK-->>R: inject skill context ephemerally
-    R->>S: Show "📚 Skills: cortex-ml | Calling llama-3.1-405b…"
+    R->>S: Show "📚 Skills: cortex-ml | Calling llama-4-maverick…"
     R->>N: chat.completions.create(model, messages+skill_ctx, tools)
 
     alt Model calls a tool

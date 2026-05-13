@@ -7,7 +7,7 @@ SnowNinja is controlled via interactive slash commands. This guide details every
 ## 📐 Planning & Design
 
 ### `/plan <goal>`
-Switch to **Planner Mode**. This sets the model role to `planner`, which uses high-reasoning models (Llama 3.1 405B) to architect a solution.
+Switch to **Planner Mode**. This sets the model role to `planner`, which uses high-reasoning models (Llama 4 Maverick) to architect a solution.
 - **Under the Hood**: Injects a strict system prompt that forbids code generation and mandates a `## Task List` at the end of the response.
 - **Example**: `/plan Design a medallion pipeline for clickstream data in the analytics_db catalog.`
 
@@ -25,7 +25,7 @@ Force the current interview to finalize.
 ## ⚙️ Implementation & Execution
 
 ### `/implement [instruction]`
-Switch to **Implementer Mode**. This uses coding-optimized models (Qwen 2.5 Coder) to execute the active task list.
+Switch to **Implementer Mode**. This uses coding-optimized models (Qwen 3 Coder 480B) to execute the active task list.
 - **Under the Hood**: Injects the `session.task_list` and `session.requirements` directly into the system prompt. The model will automatically pick up where it left off.
 - **Example**: `/implement start` or `/implement build the staging tables`.
 
@@ -44,7 +44,7 @@ Display the **NIM Model Registry**.
 
 ### `/model <lane> <model_id>`
 Hot-swap a model for the current session.
-- **Example**: `/model planner meta/llama-3.1-70b-instruct`
+- **Example**: `/model planner meta/llama-4-maverick-17b-128e-instruct`
 - **Persistence**: Saves the preference to `~/.snowninja/config.yaml` and resets the `NimClient`.
 
 ### `/tasks`
