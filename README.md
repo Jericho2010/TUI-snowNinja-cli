@@ -147,4 +147,4 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ## 📜 License
 
-Built with ❄️ and 🥷 by the SnowNinja Team. Part of the AI-Dev-Kit ecosystem. Licensed under the [MIT License](LICENSE).
+Built with ❄️ and 🥷 by the SnowNinja Team. Part of the TUINinja ecosystem. Licensed under the MIT License.
